@@ -1,0 +1,62 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+echo "Processing LinuxServer.io FILE__ environment variables..."
+
+# LinuxServer.io FILE__ prefix support (Template Version)
+# This processes environment variables with FILE__ prefix to read values from files
+# Example: FILE__JWT_SECRET=/run/secrets/jwt_secret will set JWT_SECRET to the contents of that file
+
+# Function to process FILE__ environment variables (LinuxServer.io standard)
+process_file_env() {
+    local file_var file_path env_name
+
+    # Get all environment variables starting with FILE__
+    while IFS='=' read -r name value; do
+        if [[ "$name" =~ ^FILE__(.+)$ ]]; then
+            env_name="${BASH_REMATCH[1]}"
+            file_path="$value"
+
+            # Security: Validate file path
+            if [[ ! "$file_path" =~ ^[a-zA-Z0-9/_.-]+$ ]]; then
+                echo "⚠ Warning: Invalid file path format: $file_path (for $env_name)"
+                continue
+            fi
+
+            if [[ -f "$file_path" && -r "$file_path" ]]; then
+                echo "Processing FILE__ variable: $name -> $env_name"
+                # Security: Read file content safely and export as environment variable
+                if file_content="$(cat "$file_path" 2>/dev/null)"; then
+                    export "$env_name"="$file_content"
+                    echo "✓ Set $env_name from $file_path"
+                else
+                    echo "⚠ Warning: Could not read FILE__ path: $file_path (for $env_name)"
+                fi
+            else
+                # Only show warning for required secrets (application-specific)
+                if [[ "$env_name" == "JWT_SECRET" || "$env_name" == "API_KEY" || "$env_name" =~ ^${APPLICATION_NAME_UPPER}_ ]]; then
+                    echo "⚠ Warning: FILE__ path not found or not readable: $file_path (for $env_name)"
+                else
+                    echo "ℹ Info: Optional FILE__ path not found: $file_path (for $env_name) - skipping"
+                fi
+            fi
+        fi
+    done < <(env | grep '^FILE__' || true)
+}
+
+# Process FILE__ environment variables (LinuxServer.io standard)
+process_file_env
+
+# Legacy Docker Secrets support (for backwards compatibility)
+if [[ -d /run/secrets ]]; then
+    echo "Processing legacy Docker Secrets (backwards compatibility)..."
+
+    # Legacy secret mappings for application
+    [[ -f /run/secrets/${APPLICATION_NAME}_config_pass ]] && export ${APPLICATION_NAME_UPPER}_CONFIG_PASS="$(cat /run/secrets/${APPLICATION_NAME}_config_pass)"
+    [[ -f /run/secrets/${APPLICATION_NAME}_api_key ]] && export ${APPLICATION_NAME_UPPER}_API_KEY="$(cat /run/secrets/${APPLICATION_NAME}_api_key)"
+    [[ -f /run/secrets/${APPLICATION_NAME}_jwt_secret ]] && export ${APPLICATION_NAME_UPPER}_JWT_SECRET="$(cat /run/secrets/${APPLICATION_NAME}_jwt_secret)"
+
+    echo "Legacy Docker secrets processed."
+fi
+
+echo "✓ Environment variable processing completed."

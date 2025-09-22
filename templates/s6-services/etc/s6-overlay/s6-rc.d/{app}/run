@@ -1,0 +1,119 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+echo "Starting ${APPLICATION_NAME} service..."
+
+# Process FILE__ environment variables if not already processed (additional safety)
+if [[ -n "${FILE__${APPLICATION_NAME_UPPER}_API_KEY}" && -z "${${APPLICATION_NAME_UPPER}_API_KEY}" ]]; then
+    if [[ -f "${FILE__${APPLICATION_NAME_UPPER}_API_KEY}" && -r "${FILE__${APPLICATION_NAME_UPPER}_API_KEY}" ]]; then
+        echo "Loading ${APPLICATION_NAME_UPPER}_API_KEY from ${FILE__${APPLICATION_NAME_UPPER}_API_KEY}..."
+        ${APPLICATION_NAME_UPPER}_API_KEY="$(cat "${FILE__${APPLICATION_NAME_UPPER}_API_KEY}")"
+        export ${APPLICATION_NAME_UPPER}_API_KEY
+        echo "✓ Set ${APPLICATION_NAME_UPPER}_API_KEY from secret file"
+    fi
+fi
+
+if [[ -n "${FILE__${APPLICATION_NAME_UPPER}_CONFIG_PASS}" && -z "${${APPLICATION_NAME_UPPER}_CONFIG_PASS}" ]]; then
+    if [[ -f "${FILE__${APPLICATION_NAME_UPPER}_CONFIG_PASS}" && -r "${FILE__${APPLICATION_NAME_UPPER}_CONFIG_PASS}" ]]; then
+        echo "Loading ${APPLICATION_NAME_UPPER}_CONFIG_PASS from ${FILE__${APPLICATION_NAME_UPPER}_CONFIG_PASS}..."
+        ${APPLICATION_NAME_UPPER}_CONFIG_PASS="$(cat "${FILE__${APPLICATION_NAME_UPPER}_CONFIG_PASS}")"
+        export ${APPLICATION_NAME_UPPER}_CONFIG_PASS
+        echo "✓ Set ${APPLICATION_NAME_UPPER}_CONFIG_PASS from secret file"
+    fi
+fi
+
+# Set default values with proper validation
+PORT=${PORT:-${DEFAULT_PORT}}
+CONFIG_PATH=${CONFIG_PATH:-/config}
+DATA_PATH=${DATA_PATH:-/data}
+HOST=${HOST:-0.0.0.0}
+${APPLICATION_NAME_UPPER}_CONFIG=${${APPLICATION_NAME_UPPER}_CONFIG:-${CONFIG_PATH}/${APPLICATION_NAME}/${APPLICATION_NAME}.conf}
+${APPLICATION_NAME_UPPER}_CACHE_DIR=${${APPLICATION_NAME_UPPER}_CACHE_DIR:-${CONFIG_PATH}/cache}
+${APPLICATION_NAME_UPPER}_LOG_LEVEL=${${APPLICATION_NAME_UPPER}_LOG_LEVEL:-INFO}
+${APPLICATION_NAME_UPPER}_LOG_FILE=${${APPLICATION_NAME_UPPER}_LOG_FILE:-${CONFIG_PATH}/logs/${APPLICATION_NAME}.log}
+${APPLICATION_NAME_UPPER}_MODE=${${APPLICATION_NAME_UPPER}_MODE:-${DEFAULT_MODE}}
+
+# Security: Validate paths and create directories
+for dir in "${CONFIG_PATH}" "${DATA_PATH}" "${CONFIG_PATH}/${APPLICATION_NAME}" "${CONFIG_PATH}/cache" "${CONFIG_PATH}/logs"; do
+    if [[ ! -d "${dir}" ]]; then
+        echo "Creating directory: ${dir}"
+        mkdir -p "${dir}"
+    fi
+done
+
+# Create temp directory for application
+mkdir -p "${${APPLICATION_NAME_UPPER}_TEMP_DIR:-/tmp/${APPLICATION_NAME}}"
+
+# Security: Ensure proper ownership with restricted permissions (safely)
+echo "Setting directory permissions..."
+chown -R abc:abc "${CONFIG_PATH}" "${DATA_PATH}" 2>/dev/null || true
+find "${CONFIG_PATH}" "${DATA_PATH}" -type d -exec chmod 750 {} \; 2>/dev/null || true
+find "${CONFIG_PATH}" "${DATA_PATH}" -type f -exec chmod 640 {} \; 2>/dev/null || true
+
+# Security: Validate port range
+if ! [[ "${PORT}" =~ ^[0-9]+$ ]] || [ "${PORT}" -lt 1 ] || [ "${PORT}" -gt 65535 ]; then
+    echo "ERROR: Invalid port number: ${PORT}"
+    exit 1
+fi
+
+# Initialize application config if it doesn't exist
+if [[ ! -f "${${APPLICATION_NAME_UPPER}_CONFIG}" ]]; then
+    echo "Creating initial ${APPLICATION_NAME} configuration..."
+    touch "${${APPLICATION_NAME_UPPER}_CONFIG}"
+    chown abc:abc "${${APPLICATION_NAME_UPPER}_CONFIG}"
+    chmod 600 "${${APPLICATION_NAME_UPPER}_CONFIG}"
+fi
+
+echo "Starting ${APPLICATION_NAME} in ${${APPLICATION_NAME_UPPER}_MODE} mode on ${HOST}:${PORT}..."
+echo "Config file: ${${APPLICATION_NAME_UPPER}_CONFIG}"
+echo "Data path: ${DATA_PATH}"
+echo "Cache directory: ${${APPLICATION_NAME_UPPER}_CACHE_DIR}"
+echo "Log level: ${${APPLICATION_NAME_UPPER}_LOG_LEVEL}"
+echo "Log file: ${${APPLICATION_NAME_UPPER}_LOG_FILE}"
+
+# Build application command arguments based on mode/configuration
+# This section needs to be customized for each application
+
+# Example for different modes:
+if [[ "${${APPLICATION_NAME_UPPER}_MODE}" == "server" ]]; then
+    # Server mode
+    echo "Starting ${APPLICATION_NAME} server mode..."
+    ${APPLICATION_NAME_UPPER}_ARGS=(
+        "server"
+        "--host" "${HOST}"
+        "--port" "${PORT}"
+        "--config" "${${APPLICATION_NAME_UPPER}_CONFIG}"
+        "--log-level" "${${APPLICATION_NAME_UPPER}_LOG_LEVEL}"
+    )
+elif [[ "${${APPLICATION_NAME_UPPER}_MODE}" == "daemon" ]]; then
+    # Daemon mode
+    echo "Starting ${APPLICATION_NAME} daemon mode..."
+    ${APPLICATION_NAME_UPPER}_ARGS=(
+        "daemon"
+        "--bind" "${HOST}:${PORT}"
+        "--config" "${${APPLICATION_NAME_UPPER}_CONFIG}"
+        "--log-level" "${${APPLICATION_NAME_UPPER}_LOG_LEVEL}"
+    )
+else
+    # Default mode
+    echo "Starting ${APPLICATION_NAME} in default mode..."
+    ${APPLICATION_NAME_UPPER}_ARGS=(
+        "--config" "${${APPLICATION_NAME_UPPER}_CONFIG}"
+        "--data-dir" "${DATA_PATH}"
+        "--cache-dir" "${${APPLICATION_NAME_UPPER}_CACHE_DIR}"
+        "--log-level" "${${APPLICATION_NAME_UPPER}_LOG_LEVEL}"
+    )
+fi
+
+# Add log file if specified
+if [[ -n "${${APPLICATION_NAME_UPPER}_LOG_FILE}" ]]; then
+    ${APPLICATION_NAME_UPPER}_ARGS+=("--log-file" "${${APPLICATION_NAME_UPPER}_LOG_FILE}")
+fi
+
+# Add custom arguments if provided
+if [[ -n "${${APPLICATION_NAME_UPPER}_ARGS}" ]]; then
+    eval "${APPLICATION_NAME_UPPER}_ARGS+=(${${APPLICATION_NAME_UPPER}_ARGS})"
+fi
+
+# Security: Run as non-root user with limited capabilities
+exec s6-setuidgid abc ${APPLICATION_NAME} "${${APPLICATION_NAME_UPPER}_ARGS[@]}"

@@ -1,0 +1,94 @@
+---
+services:
+  ${APPLICATION_NAME}:
+    image: ${IMAGE_NAME:-mildman1848/${APPLICATION_NAME}}:${IMAGE_TAG:-latest}
+    container_name: ${APPLICATION_NAME}
+    hostname: ${APPLICATION_NAME}
+    restart: unless-stopped
+
+    # Security hardening (basic)
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+
+    # Network configuration
+    ports:
+      - "${HOST:-127.0.0.1}:${EXTERNAL_PORT:-${DEFAULT_PORT}}:${APPLICATION_PORT}"
+
+    # Environment configuration
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Etc/UTC}
+      - UMASK=${UMASK:-022}
+
+      # ${APPLICATION_NAME} specific environment variables
+      - ${APPLICATION_NAME_UPPER}_MODE=${${APPLICATION_NAME_UPPER}_MODE:-${DEFAULT_MODE}}
+      - ${APPLICATION_NAME_UPPER}_CONFIG=/config/${APPLICATION_NAME}/${APPLICATION_NAME}.conf
+      - ${APPLICATION_NAME_UPPER}_CACHE_DIR=/config/cache
+      - ${APPLICATION_NAME_UPPER}_TEMP_DIR=/tmp/${APPLICATION_NAME}
+      - ${APPLICATION_NAME_UPPER}_LOG_LEVEL=${${APPLICATION_NAME_UPPER}_LOG_LEVEL:-INFO}
+      - ${APPLICATION_NAME_UPPER}_LOG_FILE=/config/logs/${APPLICATION_NAME}.log
+
+      # Security configuration
+      - ${APPLICATION_NAME_UPPER}_NO_AUTH=${${APPLICATION_NAME_UPPER}_NO_AUTH:-false}
+      - HOST=${HOST:-127.0.0.1}
+
+      # Optional: FILE__ prefix secrets support
+      - FILE__${APPLICATION_NAME_UPPER}_CONFIG_PASS=/run/secrets/${APPLICATION_NAME}_config_pass
+      - FILE__${APPLICATION_NAME_UPPER}_PASSWORD
+      - FILE__${APPLICATION_NAME_UPPER}_API_KEY=/run/secrets/${APPLICATION_NAME}_api_key
+
+      # Additional application configuration
+      ${ADDITIONAL_ENVIRONMENT_VARIABLES}
+
+    # Volume mounts
+    volumes:
+      - ${CONFIG_PATH:-./config}:/config
+      - ${DATA_PATH:-./data}:/data
+      - ${LOGS_PATH:-./logs}:/config/logs
+      # Mount additional paths as needed
+      - ${MEDIA_PATH:-./media}:/media
+      - ${BACKUP_PATH:-./backup}:/backup
+
+    # Optional: Docker secrets support
+    secrets:
+      - ${APPLICATION_NAME}_config_pass
+      - ${APPLICATION_NAME}_api_key
+      - ${APPLICATION_NAME}_jwt_secret
+
+    # Health check (process-based for security)
+    healthcheck:
+      test: ["CMD", "sh", "-c", "ps aux | grep -v grep | grep ${APPLICATION_NAME} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Labels for better organization
+    labels:
+      - "org.opencontainers.image.title=${APPLICATION_NAME}"
+      - "org.opencontainers.image.description=${APPLICATION_DESCRIPTION}"
+      - "org.opencontainers.image.vendor=Mildman1848"
+
+# Docker secrets (optional)
+secrets:
+  ${APPLICATION_NAME}_config_pass:
+    file: ${SECRETS_PATH:-./secrets}/${APPLICATION_NAME}_config_pass.txt
+  ${APPLICATION_NAME}_api_key:
+    file: ${SECRETS_PATH:-./secrets}/${APPLICATION_NAME}_api_key.txt
+  ${APPLICATION_NAME}_jwt_secret:
+    file: ${SECRETS_PATH:-./secrets}/${APPLICATION_NAME}_jwt_secret.txt
+
+# Networks (optional)
+networks:
+  default:
+    name: ${APPLICATION_NAME}_network
+    driver: bridge

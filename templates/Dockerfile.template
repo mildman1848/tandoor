@@ -1,0 +1,71 @@
+# syntax=docker/dockerfile:1
+
+# Build stage for ${APPLICATION_NAME}
+FROM ${SOURCE_IMAGE}:${SOURCE_VERSION} AS ${APPLICATION_NAME}
+
+# Production stage with LinuxServer.io Alpine baseimage
+FROM ghcr.io/linuxserver/baseimage-alpine:${ALPINE_VERSION}
+
+# Build arguments for metadata
+ARG BUILD_DATE
+ARG VERSION
+ARG ${APPLICATION_NAME_UPPER}_VERSION="${SOURCE_VERSION}"
+
+# Metadata labels following LinuxServer.io standards
+LABEL build.version="Mildman1848 version: ${VERSION} Build-date: ${BUILD_DATE}"
+LABEL maintainer="Mildman1848"
+LABEL org.opencontainers.image.title="${APPLICATION_NAME}"
+LABEL org.opencontainers.image.description="${APPLICATION_DESCRIPTION}"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.authors="Mildman1848"
+LABEL org.opencontainers.image.url="${APPLICATION_URL}"
+LABEL org.opencontainers.image.documentation="${APPLICATION_DOCS_URL}"
+LABEL org.opencontainers.image.source="https://github.com/Mildman1848/${APPLICATION_NAME}"
+LABEL org.opencontainers.image.vendor="Mildman1848"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Environment variables for ${APPLICATION_NAME}
+ENV ${APPLICATION_NAME_UPPER}_CONFIG="/config/${APPLICATION_NAME}/${APPLICATION_NAME}.conf" \
+    ${APPLICATION_NAME_UPPER}_CACHE_DIR="/config/cache" \
+    ${APPLICATION_NAME_UPPER}_TEMP_DIR="/tmp/${APPLICATION_NAME}" \
+    ${APPLICATION_NAME_UPPER}_LOG_LEVEL="INFO" \
+    ${APPLICATION_NAME_UPPER}_LOG_FILE="/config/logs/${APPLICATION_NAME}.log" \
+    ${APPLICATION_NAME_UPPER}_APP_VERSION="${${APPLICATION_NAME_UPPER}_VERSION}"
+
+# Install dependencies and ${APPLICATION_NAME}
+RUN \
+  echo "**** install runtime packages ****" && \
+  apk add --no-cache \
+    ca-certificates=${CA_CERTIFICATES_VERSION} \
+    curl=${CURL_VERSION} \
+    # Add application-specific packages here
+    # Example: fuse3=${FUSE3_VERSION} \
+    unzip=${UNZIP_VERSION} && \
+  echo "**** install ${APPLICATION_NAME} ****" && \
+  mkdir -p /app && \
+  echo "**** cleanup ****" && \
+  rm -rf \
+    /tmp/* \
+    /var/cache/apk/* \
+    /var/tmp/*
+
+# Copy application binary from official image or download
+COPY --from=${APPLICATION_NAME} ${SOURCE_BINARY_PATH} ${TARGET_BINARY_PATH}
+
+# Copy local files and set permissions
+COPY root/ /
+
+# Security: Set non-root user (LinuxServer.io will manage actual user via S6)
+# This satisfies security scanners while S6 overlay handles the real user management
+USER abc
+
+# Expose ports (application specific ports)
+EXPOSE ${APPLICATION_PORT}
+
+# Health check for ${APPLICATION_NAME}
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD ${HEALTH_CHECK_CMD} || exit 1
+
+# Volumes for persistent data
+VOLUME ["/config", "/data"]

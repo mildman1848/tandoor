@@ -1,0 +1,310 @@
+name: Upstream Dependency Monitor
+
+on:
+  schedule:
+    # Run Monday and Thursday at 6 AM UTC
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch:
+
+jobs:
+  monitor-upstream:
+    name: Monitor Upstream Dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check ${APPLICATION_NAME} releases
+        id: check_app
+        run: |
+          # Get latest ${APPLICATION_NAME} release
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/${UPSTREAM_REPO}/releases/latest | jq -r '.tag_name')
+          echo "Latest ${APPLICATION_NAME} release: $LATEST_RELEASE"
+
+          # Get current version from .env.example
+          CURRENT_VERSION=$(grep "${APPLICATION_NAME_UPPER}_VERSION=" .env.example | cut -d'=' -f2 | tr -d '"' || echo "${DEFAULT_VERSION}")
+          echo "Current ${APPLICATION_NAME} version: $CURRENT_VERSION"
+
+          # Compare versions
+          if [ "$LATEST_RELEASE" != "$CURRENT_VERSION" ]; then
+            echo "update_available=true" >> $GITHUB_OUTPUT
+            echo "latest_version=$LATEST_RELEASE" >> $GITHUB_OUTPUT
+            echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            echo "🆕 ${APPLICATION_NAME} update available: $CURRENT_VERSION → $LATEST_RELEASE"
+          else
+            echo "update_available=false" >> $GITHUB_OUTPUT
+            echo "✅ ${APPLICATION_NAME} is up to date"
+          fi
+
+      - name: Check LinuxServer.io baseimage
+        id: check_baseimage
+        run: |
+          # Get latest LinuxServer.io Alpine baseimage release
+          LATEST_BASEIMAGE=$(curl -s https://api.github.com/repos/linuxserver/docker-baseimage-alpine/releases/latest | jq -r '.tag_name')
+          echo "Latest LinuxServer.io baseimage: $LATEST_BASEIMAGE"
+
+          # Get current baseimage version from Dockerfile
+          CURRENT_BASEIMAGE=$(grep "FROM ghcr.io/linuxserver/baseimage-alpine:" Dockerfile | cut -d':' -f2 | cut -d' ' -f1 || echo "unknown")
+          echo "Current baseimage version: $CURRENT_BASEIMAGE"
+
+          # Compare versions
+          if [ "$LATEST_BASEIMAGE" != "$CURRENT_BASEIMAGE" ]; then
+            echo "baseimage_update_available=true" >> $GITHUB_OUTPUT
+            echo "latest_baseimage=$LATEST_BASEIMAGE" >> $GITHUB_OUTPUT
+            echo "current_baseimage=$CURRENT_BASEIMAGE" >> $GITHUB_OUTPUT
+            echo "🆕 LinuxServer.io baseimage update available: $CURRENT_BASEIMAGE → $LATEST_BASEIMAGE"
+          else
+            echo "baseimage_update_available=false" >> $GITHUB_OUTPUT
+            echo "✅ LinuxServer.io baseimage is up to date"
+          fi
+
+      - name: Check Security Advisories
+        id: check_security
+        run: |
+          # Check for security advisories in upstream repositories
+          echo "Checking for security advisories..."
+
+          # ${APPLICATION_NAME} security advisories
+          APP_ADVISORIES=$(curl -s "https://api.github.com/repos/${UPSTREAM_REPO}/security-advisories" | jq length)
+          echo "${APPLICATION_NAME} security advisories: $APP_ADVISORIES"
+
+          # LinuxServer.io advisories
+          LSIO_ADVISORIES=$(curl -s "https://api.github.com/repos/linuxserver/docker-baseimage-alpine/security-advisories" | jq length)
+          echo "LinuxServer.io security advisories: $LSIO_ADVISORIES"
+
+          # Check if there are recent advisories (simplified check)
+          if [ "$APP_ADVISORIES" -gt 0 ] || [ "$LSIO_ADVISORIES" -gt 0 ]; then
+            echo "security_advisories=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Security advisories detected"
+          else
+            echo "security_advisories=false" >> $GITHUB_OUTPUT
+            echo "✅ No security advisories"
+          fi
+
+      - name: Create or update issue for ${APPLICATION_NAME} update
+        if: steps.check_app.outputs.update_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🆕 ${APPLICATION_NAME} Update Available: ${{ steps.check_app.outputs.current_version }} → ${{ steps.check_app.outputs.latest_version }}`;
+            const body = `## ${APPLICATION_NAME} Update Available
+
+            **Current Version:** \`${{ steps.check_app.outputs.current_version }}\`
+            **Latest Version:** \`${{ steps.check_app.outputs.latest_version }}\`
+
+            ### Update Required
+
+            A new version of ${APPLICATION_NAME} is available. Please update the following:
+
+            1. **Update \`.env.example\`:**
+               \`\`\`bash
+               ${APPLICATION_NAME_UPPER}_VERSION=${{ steps.check_app.outputs.latest_version }}
+               \`\`\`
+
+            2. **Update \`Dockerfile\`** if necessary
+
+            3. **Test the update:**
+               \`\`\`bash
+               make build
+               make test
+               \`\`\`
+
+            4. **Update documentation** if there are breaking changes
+
+            ### Links
+            - [${APPLICATION_NAME} Releases](https://github.com/${UPSTREAM_REPO}/releases)
+            - [Release Notes](https://github.com/${UPSTREAM_REPO}/releases/tag/${{ steps.check_app.outputs.latest_version }})
+
+            ---
+            *This issue was automatically created by the upstream dependency monitor.*`;
+
+            // Check if issue already exists
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['upstream-update', '${APPLICATION_NAME}']
+            });
+
+            const existingIssue = existingIssues.data.find(issue =>
+              issue.title.includes('${APPLICATION_NAME} Update Available')
+            );
+
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                title: title,
+                body: body
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['upstream-update', '${APPLICATION_NAME}', 'enhancement']
+              });
+              console.log(`Created new issue #${newIssue.data.number}`);
+            }
+
+      - name: Create or update issue for baseimage update
+        if: steps.check_baseimage.outputs.baseimage_update_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🆕 LinuxServer.io Baseimage Update Available: ${{ steps.check_baseimage.outputs.current_baseimage }} → ${{ steps.check_baseimage.outputs.latest_baseimage }}`;
+            const body = `## LinuxServer.io Baseimage Update Available
+
+            **Current Version:** \`${{ steps.check_baseimage.outputs.current_baseimage }}\`
+            **Latest Version:** \`${{ steps.check_baseimage.outputs.latest_baseimage }}\`
+
+            ### Update Required
+
+            A new version of the LinuxServer.io Alpine baseimage is available. Please update:
+
+            1. **Update \`Dockerfile\`:**
+               \`\`\`dockerfile
+               FROM ghcr.io/linuxserver/baseimage-alpine:${{ steps.check_baseimage.outputs.latest_baseimage }}
+               \`\`\`
+
+            2. **Test the update:**
+               \`\`\`bash
+               make build
+               make test
+               make security-scan
+               \`\`\`
+
+            3. **Check for breaking changes** in the [release notes](https://github.com/linuxserver/docker-baseimage-alpine/releases/tag/${{ steps.check_baseimage.outputs.latest_baseimage }})
+
+            ### Links
+            - [LinuxServer.io Baseimage Releases](https://github.com/linuxserver/docker-baseimage-alpine/releases)
+            - [Release Notes](https://github.com/linuxserver/docker-baseimage-alpine/releases/tag/${{ steps.check_baseimage.outputs.latest_baseimage }})
+
+            ---
+            *This issue was automatically created by the upstream dependency monitor.*`;
+
+            // Check if issue already exists
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['upstream-update', 'baseimage']
+            });
+
+            const existingIssue = existingIssues.data.find(issue =>
+              issue.title.includes('LinuxServer.io Baseimage Update Available')
+            );
+
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                title: title,
+                body: body
+              });
+              console.log(`Updated existing baseimage issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['upstream-update', 'baseimage', 'enhancement']
+              });
+              console.log(`Created new baseimage issue #${newIssue.data.number}`);
+            }
+
+      - name: Create security advisory issue
+        if: steps.check_security.outputs.security_advisories == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🔒 Security Advisories Detected`;
+            const body = `## Security Advisories Detected
+
+            Security advisories have been detected in upstream dependencies. Please review:
+
+            ### Action Required
+
+            1. **Review Security Advisories:**
+               - [${APPLICATION_NAME} Security](https://github.com/${UPSTREAM_REPO}/security/advisories)
+               - [LinuxServer.io Security](https://github.com/linuxserver/docker-baseimage-alpine/security/advisories)
+
+            2. **Assess Impact:**
+               - Determine if advisories affect our container
+               - Check if updates are available
+
+            3. **Update if necessary:**
+               \`\`\`bash
+               make security-scan
+               make build
+               make test
+               \`\`\`
+
+            4. **Update documentation** if security practices change
+
+            ---
+            *This issue was automatically created by the upstream dependency monitor.*`;
+
+            // Check if security issue already exists
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['security', 'upstream-update']
+            });
+
+            const existingIssue = existingIssues.data.find(issue =>
+              issue.title.includes('Security Advisories Detected')
+            );
+
+            if (!existingIssue) {
+              // Create new security issue
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['security', 'upstream-update', 'priority-high']
+              });
+              console.log(`Created new security issue #${newIssue.data.number}`);
+            } else {
+              console.log('Security advisory issue already exists');
+            }
+
+      - name: Summary
+        run: |
+          echo "## 📊 Upstream Dependency Monitor Summary"
+          echo ""
+          echo "### ${APPLICATION_NAME} Status"
+          if [ "${{ steps.check_app.outputs.update_available }}" = "true" ]; then
+            echo "🆕 Update available: ${{ steps.check_app.outputs.current_version }} → ${{ steps.check_app.outputs.latest_version }}"
+          else
+            echo "✅ Up to date"
+          fi
+          echo ""
+          echo "### LinuxServer.io Baseimage Status"
+          if [ "${{ steps.check_baseimage.outputs.baseimage_update_available }}" = "true" ]; then
+            echo "🆕 Update available: ${{ steps.check_baseimage.outputs.current_baseimage }} → ${{ steps.check_baseimage.outputs.latest_baseimage }}"
+          else
+            echo "✅ Up to date"
+          fi
+          echo ""
+          echo "### Security Status"
+          if [ "${{ steps.check_security.outputs.security_advisories }}" = "true" ]; then
+            echo "⚠️ Security advisories detected"
+          else
+            echo "✅ No security advisories"
+          fi

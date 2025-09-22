@@ -1,0 +1,3 @@
+# This file ensures the {app} service is included in the S6 user bundle
+# Critical: Without this, the main application service will not start
+# Replace {app} with your actual application name
