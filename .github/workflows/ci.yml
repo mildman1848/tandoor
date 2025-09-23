@@ -184,6 +184,8 @@ jobs:
           PORT=8080
           PROJECT_NAME=tandoor
           COMPOSE_PROJECT_NAME=tandoor
+          IMAGE_NAME=mildman1848/tandoor
+          IMAGE_TAG=ci-test
           EOF
 
       - name: Validate base compose
@@ -200,10 +202,13 @@ jobs:
             echo "docker-compose.override.yml not found, skipping override validation"
           fi
 
+      - name: Build image for compose test
+        run: |
+          # Build the image locally with the tag expected by docker-compose
+          docker build -t mildman1848/tandoor:ci-test .
+
       - name: Test compose startup (dry run)
         run: |
-          # Build image first
-          docker compose build
 
           # Test startup without actually running
           docker compose up --no-start
