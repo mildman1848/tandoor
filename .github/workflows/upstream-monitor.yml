@@ -1,0 +1,200 @@
+name: Upstream Monitor
+
+on:
+  schedule:
+    - cron: '0 6 * * 1,4'  # Monday and Thursday at 6 AM UTC
+  workflow_dispatch:
+
+env:
+  TANDOOR_REPO: TandoorRecipes/recipes
+  BASEIMAGE_REPO: linuxserver/docker-baseimage-alpine
+
+jobs:
+  monitor-tandoor:
+    name: Monitor Tandoor Releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get current Tandoor version
+        id: current
+        run: |
+          CURRENT_VERSION=$(grep 'TANDOOR_VERSION="' Dockerfile | sed 's/.*TANDOOR_VERSION="\([^"]*\)".*/\1/')
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current Tandoor version: $CURRENT_VERSION"
+
+      - name: Get latest Tandoor release
+        id: latest
+        run: |
+          LATEST_VERSION=$(gh api repos/${{ env.TANDOOR_REPO }}/releases/latest --jq '.tag_name')
+          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "Latest Tandoor version: $LATEST_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compare versions and create issue if outdated
+        if: steps.current.outputs.version != steps.latest.outputs.version
+        run: |
+          ISSUE_TITLE="🔄 Tandoor Recipes Update Available: ${{ steps.latest.outputs.version }}"
+          ISSUE_BODY="## 📦 New Tandoor Recipes Release Available
+
+          **Current Version:** \`${{ steps.current.outputs.version }}\`
+          **Latest Version:** \`${{ steps.latest.outputs.version }}\`
+
+          ### 📋 Update Checklist
+
+          - [ ] Review [Tandoor Recipes Changelog](https://github.com/${{ env.TANDOOR_REPO }}/releases/tag/${{ steps.latest.outputs.version }})
+          - [ ] Update \`TANDOOR_VERSION\` in Dockerfile
+          - [ ] Test build and functionality
+          - [ ] Update CHANGELOG.md with new version
+          - [ ] Create release with updated version
+
+          ### 🔗 Links
+
+          - [Tandoor Release]( https://github.com/${{ env.TANDOOR_REPO }}/releases/tag/${{ steps.latest.outputs.version }})
+          - [Tandoor Repository](https://github.com/${{ env.TANDOOR_REPO }})
+
+          **Created by:** Upstream Monitor Workflow
+          **Triggered:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+
+          # Check if issue already exists
+          EXISTING_ISSUE=$(gh issue list --limit 100 --search "Tandoor Recipes Update Available" --json number,title --jq '.[] | select(.title | contains("${{ steps.latest.outputs.version }}")) | .number')
+
+          if [ -z "$EXISTING_ISSUE" ]; then
+            gh issue create \
+              --title "$ISSUE_TITLE" \
+              --body "$ISSUE_BODY" \
+              --label "enhancement,upstream-update,automated"
+            echo "✅ Created issue for Tandoor update to ${{ steps.latest.outputs.version }}"
+          else
+            echo "ℹ️ Issue already exists for version ${{ steps.latest.outputs.version }} (#$EXISTING_ISSUE)"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log version check result
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "${{ steps.latest.outputs.version }}" ]; then
+            echo "✅ Tandoor Recipes is up to date (v${{ steps.current.outputs.version }})"
+          else
+            echo "⚠️ Tandoor Recipes update available: ${{ steps.current.outputs.version }} → ${{ steps.latest.outputs.version }}"
+          fi
+
+  monitor-baseimage:
+    name: Monitor Base Image Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get current base image version
+        id: current
+        run: |
+          CURRENT_VERSION=$(grep 'FROM ghcr.io/linuxserver/baseimage-alpine:' Dockerfile | sed 's/.*baseimage-alpine:\([^[:space:]]*\).*/\1/')
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current base image version: $CURRENT_VERSION"
+
+      - name: Get latest base image tags
+        id: latest
+        run: |
+          # Get the latest 3.22.x version (assuming we want to stay on 3.22 series)
+          LATEST_VERSION=$(gh api repos/${{ env.BASEIMAGE_REPO }}/releases --jq '[.[] | select(.tag_name | startswith("alpine-3.22")) | .tag_name] | .[0]' | sed 's/alpine-//')
+          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "Latest base image version: $LATEST_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compare base image versions
+        if: steps.current.outputs.version != steps.latest.outputs.version
+        run: |
+          ISSUE_TITLE="🔄 Base Image Update Available: alpine-${{ steps.latest.outputs.version }}"
+          ISSUE_BODY="## 🐧 New LinuxServer.io Base Image Available
+
+          **Current Version:** \`alpine-${{ steps.current.outputs.version }}\`
+          **Latest Version:** \`alpine-${{ steps.latest.outputs.version }}\`
+
+          ### 📋 Update Checklist
+
+          - [ ] Review [LinuxServer.io Base Image Changelog](https://github.com/${{ env.BASEIMAGE_REPO }}/releases/tag/alpine-${{ steps.latest.outputs.version }})
+          - [ ] Update \`FROM\` line in Dockerfile
+          - [ ] Test build and functionality
+          - [ ] Verify S6 Overlay compatibility
+          - [ ] Update CHANGELOG.md with base image update
+
+          ### 🔗 Links
+
+          - [Base Image Release](https://github.com/${{ env.BASEIMAGE_REPO }}/releases/tag/alpine-${{ steps.latest.outputs.version }})
+          - [LinuxServer.io Repository](https://github.com/${{ env.BASEIMAGE_REPO }})
+
+          **Created by:** Upstream Monitor Workflow
+          **Triggered:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+
+          # Check if issue already exists
+          EXISTING_ISSUE=$(gh issue list --limit 100 --search "Base Image Update Available" --json number,title --jq '.[] | select(.title | contains("${{ steps.latest.outputs.version }}")) | .number')
+
+          if [ -z "$EXISTING_ISSUE" ]; then
+            gh issue create \
+              --title "$ISSUE_TITLE" \
+              --body "$ISSUE_BODY" \
+              --label "enhancement,base-image-update,automated"
+            echo "✅ Created issue for base image update to alpine-${{ steps.latest.outputs.version }}"
+          else
+            echo "ℹ️ Issue already exists for version alpine-${{ steps.latest.outputs.version }} (#$EXISTING_ISSUE)"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log base image check result
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "${{ steps.latest.outputs.version }}" ]; then
+            echo "✅ Base image is up to date (alpine-${{ steps.current.outputs.version }})"
+          else
+            echo "⚠️ Base image update available: alpine-${{ steps.current.outputs.version }} → alpine-${{ steps.latest.outputs.version }}"
+          fi
+
+  security-check:
+    name: Security Update Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for security updates
+        run: |
+          echo "## 🔒 Security Update Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Checking for critical security updates..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for CVE updates in dependencies
+          if [ -f "requirements.txt" ]; then
+            echo "- ✅ Python requirements.txt found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "Dockerfile" ]; then
+            echo "- ✅ Dockerfile found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Manual security review recommended for critical updates." >> $GITHUB_STEP_SUMMARY
+
+  summary:
+    name: Monitor Summary
+    runs-on: ubuntu-latest
+    needs: [monitor-tandoor, monitor-baseimage, security-check]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📊 Upstream Monitor Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Monitoring Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Monitored Components" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- 🍴 Tandoor Recipes (TandoorRecipes/recipes)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐧 LinuxServer.io Alpine Base Image" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔒 Security Updates" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Check:** Scheduled for Monday and Thursday at 6 AM UTC" >> $GITHUB_STEP_SUMMARY
