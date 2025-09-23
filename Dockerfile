@@ -99,7 +99,7 @@ RUN \
     echo "**** collect version information ****" && \
     /app/venv/bin/python /app/version.py && \
     echo "**** cleanup ****" && \
-    find /app -type d -name ".git" | xargs rm -rf && \
+    find /app -type d -name ".git" -exec rm -rf {} + && \
     apk del .build-deps && \
     rm -rf \
         /tmp/* \

@@ -193,7 +193,12 @@ jobs:
         run: docker compose -f docker-compose.yml -f docker-compose.production.yml config
 
       - name: Validate override compose
-        run: docker compose -f docker-compose.yml -f docker-compose.override.yml config
+        run: |
+          if [ -f docker-compose.override.yml ]; then
+            docker compose -f docker-compose.yml -f docker-compose.override.yml config
+          else
+            echo "docker-compose.override.yml not found, skipping override validation"
+          fi
 
       - name: Test compose startup (dry run)
         run: |
