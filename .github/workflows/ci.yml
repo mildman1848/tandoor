@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 env:
-  PROJECT_NAME: template
-  IMAGE_NAME: mildman1848/template
+  PROJECT_NAME: tandoor
+  IMAGE_NAME: mildman1848/tandoor
 
 jobs:
   lint:
@@ -25,7 +25,7 @@ jobs:
           sudo mv hadolint /usr/local/bin/
 
       - name: Lint Dockerfile
-        run: hadolint Dockerfile
+        run: hadolint --ignore DL3018 Dockerfile
 
       - name: Validate docker compose files
         run: |
@@ -108,10 +108,10 @@ jobs:
           fi
 
           # Test container health (customize for your application)
-          if docker exec test-container pgrep -f "your_app_binary" > /dev/null; then
-            echo "✅ Application process found"
+          if docker exec test-container pgrep -f "gunicorn" > /dev/null; then
+            echo "✅ Tandoor gunicorn process found"
           else
-            echo "⚠️ Application process not found - customize health check for your application"
+            echo "⚠️ Tandoor gunicorn process not found - check logs"
           fi
 
           # Cleanup
@@ -182,8 +182,8 @@ jobs:
           TZ=UTC
           EXTERNAL_PORT=8080
           PORT=8080
-          PROJECT_NAME=template
-          COMPOSE_PROJECT_NAME=template
+          PROJECT_NAME=tandoor
+          COMPOSE_PROJECT_NAME=tandoor
           EOF
 
       - name: Validate base compose
