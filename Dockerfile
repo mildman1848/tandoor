@@ -1,5 +1,5 @@
 # Multi-stage build for Tandoor Recipes based on LinuxServer.io Alpine
-FROM ghcr.io/linuxserver/baseimage-alpine:3.22-25712cc1-ls9
+FROM ghcr.io/linuxserver/baseimage-alpine:3.22
 
 # Build arguments
 ARG BUILD_DATE
@@ -99,7 +99,8 @@ RUN \
     /app/venv/bin/python -m pip install --upgrade pip && \
     /app/venv/bin/pip install wheel==0.45.1 && \
     /app/venv/bin/pip install setuptools_rust==1.10.2 && \
-    /app/venv/bin/pip install -r /app/requirements.txt --no-cache-dir || echo "Continuing with partial installation" && \
+    echo "**** install python-ldap separately with proper dependencies ****" && \\n    /app/venv/bin/pip install python-ldap==3.4.4 --no-cache-dir && 
+    /app/venv/bin/pip install -r /app/requirements.txt --no-cache-dir && \
     echo "**** configure nginx ****" && \
     rm -rf /etc/nginx/http.d && \
     ln -s /app/http.d /etc/nginx/http.d && \
