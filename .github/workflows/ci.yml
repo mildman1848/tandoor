@@ -27,10 +27,10 @@ jobs:
       - name: Lint Dockerfile
         run: hadolint Dockerfile
 
-      - name: Validate docker-compose files
+      - name: Validate docker compose files
         run: |
-          docker-compose config
-          docker-compose -f docker-compose.yml -f docker-compose.production.yml config
+          docker compose config
+          docker compose -f docker-compose.yml -f docker-compose.production.yml config
 
       - name: Validate Makefile
         run: make --dry-run help
@@ -187,21 +187,21 @@ jobs:
           EOF
 
       - name: Validate base compose
-        run: docker-compose config
+        run: docker compose config
 
       - name: Validate production compose
-        run: docker-compose -f docker-compose.yml -f docker-compose.production.yml config
+        run: docker compose -f docker-compose.yml -f docker-compose.production.yml config
 
       - name: Validate override compose
-        run: docker-compose -f docker-compose.yml -f docker-compose.override.yml config
+        run: docker compose -f docker-compose.yml -f docker-compose.override.yml config
 
       - name: Test compose startup (dry run)
         run: |
           # Build image first
-          docker-compose build
+          docker compose build
 
           # Test startup without actually running
-          docker-compose up --no-start
+          docker compose up --no-start
 
           # Cleanup
-          docker-compose down --remove-orphans
+          docker compose down --remove-orphans
