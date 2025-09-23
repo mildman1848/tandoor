@@ -95,12 +95,18 @@ services:
     restart: unless-stopped
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-djangodb}
-      - POSTGRES_USER=${POSTGRES_USER:-djangouser}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
+      # PostgreSQL secrets support (uses _FILE suffix exclusively)
+      # Note: Cannot use both POSTGRES_PASSWORD and POSTGRES_PASSWORD_FILE
+      - POSTGRES_PASSWORD_FILE=/run/secrets/tandoor_postgres_password
+      - POSTGRES_USER_FILE=/run/secrets/tandoor_postgres_user
     volumes:
       - ${DB_DATA_PATH:-./db}:/var/lib/postgresql/data
+    # Docker secrets support for PostgreSQL
+    secrets:
+      - tandoor_postgres_password
+      - tandoor_postgres_user
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-djangouser}"]
+      test: ["CMD-SHELL", "pg_isready -d djangodb -U $(cat /run/secrets/tandoor_postgres_user)"]
       interval: 10s
       timeout: 5s
       retries: 5
