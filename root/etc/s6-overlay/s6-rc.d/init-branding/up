@@ -1,0 +1,15 @@
+#!/usr/bin/with-contenv bash
+
+echo "════════════════════════════════════════════════════════════════════════════════════════"
+echo "  MILDMAN1848 - TANDOOR RECIPES ${TANDOOR_VERSION}"
+echo "  Enhanced Security & Docker Secrets Implementation"
+echo ""
+echo "  Version: ${PROJECT_VERSION}"
+echo "  Built: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+echo "  Source: https://github.com/mildman1848/tandoor"
+echo ""
+echo "  Based on LinuxServer.io Alpine + S6 Overlay v3"
+echo "  Licensed under AGPL-3.0"
+echo "════════════════════════════════════════════════════════════════════════════════════════"
+
+echo "Branding configured successfully"

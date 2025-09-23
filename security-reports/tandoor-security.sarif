@@ -1,0 +1,308 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "fullName": "Trivy Vulnerability Scanner",
+          "informationUri": "https://github.com/aquasecurity/trivy",
+          "name": "Trivy",
+          "rules": [
+            {
+              "id": "CVE-2025-59375",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "expat: libexpat in Expat allows attackers to trigger large dynamic memory allocations via a small document that is submitted for parsing"
+              },
+              "fullDescription": {
+                "text": "libexpat in Expat before 2.7.2 allows attackers to trigger large dynamic memory allocations via a small document that is submitted for parsing."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://avd.aquasec.com/nvd/cve-2025-59375",
+              "help": {
+                "text": "Vulnerability CVE-2025-59375\nSeverity: HIGH\nPackage: libexpat\nFixed Version: 2.7.2-r0\nLink: [CVE-2025-59375](https://avd.aquasec.com/nvd/cve-2025-59375)\nlibexpat in Expat before 2.7.2 allows attackers to trigger large dynamic memory allocations via a small document that is submitted for parsing.",
+                "markdown": "**Vulnerability CVE-2025-59375**\n| Severity | Package | Fixed Version | Link |\n| --- | --- | --- | --- |\n|HIGH|libexpat|2.7.2-r0|[CVE-2025-59375](https://avd.aquasec.com/nvd/cve-2025-59375)|\n\nlibexpat in Expat before 2.7.2 allows attackers to trigger large dynamic memory allocations via a small document that is submitted for parsing."
+              },
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "8.0",
+                "tags": [
+                  "vulnerability",
+                  "security",
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-50181",
+              "name": "LanguageSpecificPackageVulnerability",
+              "shortDescription": {
+                "text": "urllib3: urllib3 redirects are not disabled when retries are disabled on PoolManager instantiation"
+              },
+              "fullDescription": {
+                "text": "urllib3 is a user-friendly HTTP client library for Python. Prior to 2.5.0, it is possible to disable redirects for all requests by instantiating a PoolManager and specifying retries in a way that disable redirects. By default, requests and botocore users are not affected. An application attempting to mitigate SSRF or open redirect vulnerabilities by disabling redirects at the PoolManager level will remain vulnerable. This issue has been patched in version 2.5.0."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "helpUri": "https://avd.aquasec.com/nvd/cve-2025-50181",
+              "help": {
+                "text": "Vulnerability CVE-2025-50181\nSeverity: MEDIUM\nPackage: urllib3\nFixed Version: 2.5.0\nLink: [CVE-2025-50181](https://avd.aquasec.com/nvd/cve-2025-50181)\nurllib3 is a user-friendly HTTP client library for Python. Prior to 2.5.0, it is possible to disable redirects for all requests by instantiating a PoolManager and specifying retries in a way that disable redirects. By default, requests and botocore users are not affected. An application attempting to mitigate SSRF or open redirect vulnerabilities by disabling redirects at the PoolManager level will remain vulnerable. This issue has been patched in version 2.5.0.",
+                "markdown": "**Vulnerability CVE-2025-50181**\n| Severity | Package | Fixed Version | Link |\n| --- | --- | --- | --- |\n|MEDIUM|urllib3|2.5.0|[CVE-2025-50181](https://avd.aquasec.com/nvd/cve-2025-50181)|\n\nurllib3 is a user-friendly HTTP client library for Python. Prior to 2.5.0, it is possible to disable redirects for all requests by instantiating a PoolManager and specifying retries in a way that disable redirects. By default, requests and botocore users are not affected. An application attempting to mitigate SSRF or open redirect vulnerabilities by disabling redirects at the PoolManager level will remain vulnerable. This issue has been patched in version 2.5.0."
+              },
+              "properties": {
+                "cvssv3_baseScore": 5.3,
+                "cvssv3_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+                "precision": "very-high",
+                "security-severity": "5.3",
+                "tags": [
+                  "vulnerability",
+                  "security",
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "slack-web-hook",
+              "name": "Secret",
+              "shortDescription": {
+                "text": "Slack Webhook"
+              },
+              "fullDescription": {
+                "text": "bhook_url: {'budget_alerts': '*****************************************************************************'}`\","
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "helpUri": "https://github.com/aquasecurity/trivy/blob/main/pkg/fanal/secret/builtin-rules.go",
+              "help": {
+                "text": "Secret Slack Webhook\nSeverity: MEDIUM\nMatch: bhook_url: {'budget_alerts': '*****************************************************************************'}`\",",
+                "markdown": "**Secret Slack Webhook**\n| Severity | Match |\n| --- | --- |\n|MEDIUM|bhook_url: {'budget_alerts': '*****************************************************************************'}`\",|"
+              },
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "5.5",
+                "tags": [
+                  "secret",
+                  "security",
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "private-key",
+              "name": "Secret",
+              "shortDescription": {
+                "text": "Asymmetric Private Key"
+              },
+              "fullDescription": {
+                "text": "****************************************************************"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://github.com/aquasecurity/trivy/blob/main/pkg/fanal/secret/builtin-rules.go",
+              "help": {
+                "text": "Secret Asymmetric Private Key\nSeverity: HIGH\nMatch: ****************************************************************",
+                "markdown": "**Secret Asymmetric Private Key**\n| Severity | Match |\n| --- | --- |\n|HIGH|****************************************************************|"
+              },
+              "properties": {
+                "precision": "very-high",
+                "security-severity": "8.0",
+                "tags": [
+                  "secret",
+                  "security",
+                  "HIGH"
+                ]
+              }
+            }
+          ],
+          "version": "0.66.0"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2025-59375",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Package: libexpat\nInstalled Version: 2.7.1-r0\nVulnerability CVE-2025-59375\nSeverity: HIGH\nFixed Version: 2.7.2-r0\nLink: [CVE-2025-59375](https://avd.aquasec.com/nvd/cve-2025-59375)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "vabene1111/recipes",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 1
+                }
+              },
+              "message": {
+                "text": "vabene1111/recipes: libexpat@2.7.1-r0"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-50181",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Package: urllib3\nInstalled Version: 1.26.20\nVulnerability CVE-2025-50181\nSeverity: MEDIUM\nFixed Version: 2.5.0\nLink: [CVE-2025-50181](https://avd.aquasec.com/nvd/cve-2025-50181)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "opt/recipes/venv/lib/python3.13/site-packages/urllib3-1.26.20.dist-info/METADATA",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 1
+                }
+              },
+              "message": {
+                "text": "opt/recipes/venv/lib/python3.13/site-packages/urllib3-1.26.20.dist-info/METADATA: urllib3@1.26.20"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "slack-web-hook",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "Artifact: /opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/__pycache__/_types.cpython-313.pyc\nType: \nSecret Slack Webhook\nSeverity: MEDIUM\nMatch: Binary file \"/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/__pycache__/_types.cpython-313.pyc\" matches a rule \"Slack Webhook\""
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/__pycache__/_types.cpython-313.pyc",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 823,
+                  "startColumn": 1,
+                  "endLine": 823,
+                  "endColumn": 1
+                }
+              },
+              "message": {
+                "text": "/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/__pycache__/_types.cpython-313.pyc"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "slack-web-hook",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "Artifact: /opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/_types.py\nType: \nSecret Slack Webhook\nSeverity: MEDIUM\nMatch: bhook_url: {'budget_alerts': '*****************************************************************************'}`\","
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/_types.py",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 1369,
+                  "startColumn": 1,
+                  "endLine": 1369,
+                  "endColumn": 1
+                }
+              },
+              "message": {
+                "text": "/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/_types.py"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "private-key",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "Artifact: /opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/client.key\nType: \nSecret Asymmetric Private Key\nSeverity: HIGH\nMatch: ****************************************************************"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/client.key",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 27,
+                  "endColumn": 1
+                }
+              },
+              "message": {
+                "text": "/opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/client.key"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "private-key",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "Artifact: /opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/server.key\nType: \nSecret Asymmetric Private Key\nSeverity: HIGH\nMatch: ****************************************************************"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/server.key",
+                  "uriBaseId": "ROOTPATH"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 27,
+                  "endColumn": 1
+                }
+              },
+              "message": {
+                "text": "/opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/server.key"
+              }
+            }
+          ]
+        }
+      ],
+      "columnKind": "utf16CodeUnits",
+      "originalUriBaseIds": {
+        "ROOTPATH": {
+          "uri": "file:///"
+        }
+      },
+      "properties": {
+        "imageID": "sha256:93f775f238adf023546f7a82adfc6aaab5fb26a705aadd7ad8aa563b8861fb31",
+        "imageName": "vabene1111/recipes:latest",
+        "repoDigests": [
+          "vabene1111/recipes@sha256:93f775f238adf023546f7a82adfc6aaab5fb26a705aadd7ad8aa563b8861fb31"
+        ],
+        "repoTags": [
+          "vabene1111/recipes:latest"
+        ]
+      }
+    }
+  ]
+}

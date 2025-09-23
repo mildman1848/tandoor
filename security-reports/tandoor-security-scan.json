@@ -1,0 +1,1132 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2025-09-22T21:54:21.1007162+02:00",
+  "ArtifactName": "vabene1111/recipes:latest",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "Size": 614294016,
+    "OS": {
+      "Family": "alpine",
+      "Name": "3.22.1"
+    },
+    "ImageID": "sha256:93f775f238adf023546f7a82adfc6aaab5fb26a705aadd7ad8aa563b8861fb31",
+    "DiffIDs": [
+      "sha256:418dccb7d85a63a6aa574439840f7a6fa6fd2321b3e2394568a317735e867d35",
+      "sha256:062ca0d899245921454443a8bca59333e9f65ce0971881e23a4ed8e38ae5eb7f",
+      "sha256:d2a0c772fb406ad6f280d8c4ff7f414f5062093bacd6198b945b79b8ff84afdb",
+      "sha256:7e8988ece024a5f9dca59003db4b857c72fdb3e33bda91d6b97b8d066ca04cd1",
+      "sha256:d85dd8f178e16abe34fa1f9dbafcb811356154d9be129163c6ee1c145bf9af83",
+      "sha256:30ba7fe4cbe5bea00e2f3c0ad2b1b6bc23996b07f6aeb3d0412e1770b3b792b9",
+      "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+      "sha256:4c13064f2e1c678a7d6bcccc47873831994c80b7c4b9fc3d4d2d9aadfd9afbf5",
+      "sha256:698299b8d6c99ee39eb3481934d4e3daed770577f1852c11ec0dac8b618f3820",
+      "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e",
+      "sha256:8788999dbce1d937f696de4ef11de922841f8de111f79839af0e646682c12724",
+      "sha256:76f9b2a937beaf401212f4db8ebefa4b1bc449b1081c37a11fa82c854f7b6f58",
+      "sha256:ac0c6faef75a9bf5d7ab241e696997acdd2ceff33d9593776949ee2a4f357e2c",
+      "sha256:5ca8b728e7915af6026d8c4f8abc7683db09114300b00b21208b08c64f36678f",
+      "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+    ],
+    "RepoTags": [
+      "vabene1111/recipes:latest"
+    ],
+    "RepoDigests": [
+      "vabene1111/recipes@sha256:93f775f238adf023546f7a82adfc6aaab5fb26a705aadd7ad8aa563b8861fb31"
+    ],
+    "ImageConfig": {
+      "architecture": "amd64",
+      "created": "2025-09-19T15:04:00.877982195Z",
+      "history": [
+        {
+          "created": "2025-07-15T11:01:16Z",
+          "created_by": "ADD alpine-minirootfs-3.22.1-x86_64.tar.gz / # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-07-15T11:01:16Z",
+          "created_by": "CMD [\"/bin/sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "RUN /bin/sh -c set -eux; \tapk add --no-cache \t\tca-certificates \t\ttzdata \t; # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "ENV GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "ENV PYTHON_VERSION=3.13.7",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "ENV PYTHON_SHA256=5462f9099dfd30e238def83c71d91897d8caa5ff6ebc7a50f14d4802cdaaa79a",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "RUN /bin/sh -c set -eux; \t\tapk add --no-cache --virtual .build-deps \t\tgnupg \t\ttar \t\txz \t\t\t\tbluez-dev \t\tbzip2-dev \t\tdpkg-dev dpkg \t\tfindutils \t\tgcc \t\tgdbm-dev \t\tlibc-dev \t\tlibffi-dev \t\tlibnsl-dev \t\tlibtirpc-dev \t\tlinux-headers \t\tmake \t\tncurses-dev \t\topenssl-dev \t\tpax-utils \t\treadline-dev \t\tsqlite-dev \t\ttcl-dev \t\ttk \t\ttk-dev \t\tutil-linux-dev \t\txz-dev \t\tzlib-dev \t; \t\twget -O python.tar.xz \"https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz\"; \techo \"$PYTHON_SHA256 *python.tar.xz\" | sha256sum -c -; \twget -O python.tar.xz.asc \"https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc\"; \tGNUPGHOME=\"$(mktemp -d)\"; export GNUPGHOME; \tgpg --batch --keyserver hkps://keys.openpgp.org --recv-keys \"$GPG_KEY\"; \tgpg --batch --verify python.tar.xz.asc python.tar.xz; \tgpgconf --kill all; \trm -rf \"$GNUPGHOME\" python.tar.xz.asc; \tmkdir -p /usr/src/python; \ttar --extract --directory /usr/src/python --strip-components=1 --file python.tar.xz; \trm python.tar.xz; \t\tcd /usr/src/python; \tgnuArch=\"$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)\"; \t./configure \t\t--build=\"$gnuArch\" \t\t--enable-loadable-sqlite-extensions \t\t--enable-option-checking=fatal \t\t--enable-shared \t\t$(test \"${gnuArch%%-*}\" != 'riscv64' \u0026\u0026 echo '--with-lto') \t\t--with-ensurepip \t; \tnproc=\"$(nproc)\"; \tEXTRA_CFLAGS=\"-DTHREAD_STACK_SIZE=0x100000\"; \tLDFLAGS=\"${LDFLAGS:--Wl},--strip-all\"; \t\tarch=\"$(apk --print-arch)\"; \t\tcase \"$arch\" in \t\t\tx86_64|aarch64) \t\t\t\tEXTRA_CFLAGS=\"${EXTRA_CFLAGS:-} -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer\"; \t\t\t\t;; \t\t\tx86) \t\t\t\t;; \t\t\t*) \t\t\t\tEXTRA_CFLAGS=\"${EXTRA_CFLAGS:-} -fno-omit-frame-pointer\"; \t\t\t\t;; \t\tesac; \tmake -j \"$nproc\" \t\t\"EXTRA_CFLAGS=${EXTRA_CFLAGS:-}\" \t\t\"LDFLAGS=${LDFLAGS:-}\" \t; \trm python; \tmake -j \"$nproc\" \t\t\"EXTRA_CFLAGS=${EXTRA_CFLAGS:-}\" \t\t\"LDFLAGS=${LDFLAGS:--Wl},-rpath='\\$\\$ORIGIN/../lib'\" \t\tpython \t; \tmake install; \t\tcd /; \trm -rf /usr/src/python; \t\tfind /usr/local -depth \t\t\\( \t\t\t\\( -type d -a \\( -name test -o -name tests -o -name idle_test \\) \\) \t\t\t-o \\( -type f -a \\( -name '*.pyc' -o -name '*.pyo' -o -name 'libpython*.a' \\) \\) \t\t\\) -exec rm -rf '{}' + \t; \t\tfind /usr/local -type f -executable -not \\( -name '*tkinter*' \\) -exec scanelf --needed --nobanner --format '%n#p' '{}' ';' \t\t| tr ',' '\\n' \t\t| sort -u \t\t| awk 'system(\"[ -e /usr/local/lib/\" $1 \" ]\") == 0 { next } { print \"so:\" $1 }' \t\t| xargs -rt apk add --no-network --virtual .python-rundeps \t; \tapk del --no-network .build-deps; \t\texport PYTHONDONTWRITEBYTECODE=1; \tpython3 --version; \tpip3 --version # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "RUN /bin/sh -c set -eux; \tfor src in idle3 pip3 pydoc3 python3 python3-config; do \t\tdst=\"$(echo \"$src\" | tr -d 3)\"; \t\t[ -s \"/usr/local/bin/$src\" ]; \t\t[ ! -e \"/usr/local/bin/$dst\" ]; \t\tln -svT \"$src\" \"/usr/local/bin/$dst\"; \tdone # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-14T21:49:23Z",
+          "created_by": "CMD [\"python3\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-21T15:13:52Z",
+          "created_by": "RUN /bin/sh -c apk add --no-cache postgresql-libs postgresql-client gettext zlib libjpeg libwebp libxml2-dev libxslt-dev openldap git libgcc libstdc++ nginx tini envsubst nodejs npm # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-21T15:13:52Z",
+          "created_by": "ENV PYTHONUNBUFFERED=1 DOCKER=true",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-21T15:13:52Z",
+          "created_by": "EXPOSE \u0026{[{{11 0} {11 0}}] 0xc000050800}",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-21T15:13:52Z",
+          "created_by": "RUN /bin/sh -c mkdir /opt/recipes # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-19T14:50:34Z",
+          "created_by": "WORKDIR /opt/recipes",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-10T19:00:53Z",
+          "created_by": "COPY requirements.txt ./ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-10T19:00:53Z",
+          "created_by": "RUN /bin/sh -c sed -i '/# Development/,$d' requirements.txt # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-10T19:01:53Z",
+          "created_by": "RUN /bin/sh -c apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev zlib-dev jpeg-dev libwebp-dev openssl-dev libffi-dev cargo openldap-dev python3-dev xmlsec-dev xmlsec build-base g++ curl rust \u0026\u0026     python -m venv venv \u0026\u0026     /opt/recipes/venv/bin/python -m pip install --upgrade pip \u0026\u0026     venv/bin/pip debug -v \u0026\u0026     venv/bin/pip install wheel==0.45.1 \u0026\u0026     venv/bin/pip install setuptools_rust==1.10.2 \u0026\u0026     venv/bin/pip install -r requirements.txt --no-cache-dir \u0026\u0026    apk --purge del .build-deps # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-19T15:04:00Z",
+          "created_by": "COPY . ./ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-19T15:04:00Z",
+          "created_by": "RUN /bin/sh -c rm -rf /etc/nginx/http.d \u0026\u0026     ln -s /opt/recipes/http.d /etc/nginx/http.d \u0026\u0026     ln -sf /dev/stdout /var/log/nginx/access.log \u0026\u0026     ln -sf /dev/stderr /var/log/nginx/error.log # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-19T15:04:00Z",
+          "created_by": "RUN /bin/sh -c /opt/recipes/venv/bin/python version.py # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-19T15:04:00Z",
+          "created_by": "RUN /bin/sh -c find . -type d -name \".git\" | xargs rm -rf # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-19T15:04:00Z",
+          "created_by": "RUN /bin/sh -c chmod +x boot.sh # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-09-19T15:04:00Z",
+          "created_by": "ENTRYPOINT [\"/sbin/tini\" \"--\" \"/opt/recipes/boot.sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:418dccb7d85a63a6aa574439840f7a6fa6fd2321b3e2394568a317735e867d35",
+          "sha256:062ca0d899245921454443a8bca59333e9f65ce0971881e23a4ed8e38ae5eb7f",
+          "sha256:d2a0c772fb406ad6f280d8c4ff7f414f5062093bacd6198b945b79b8ff84afdb",
+          "sha256:7e8988ece024a5f9dca59003db4b857c72fdb3e33bda91d6b97b8d066ca04cd1",
+          "sha256:d85dd8f178e16abe34fa1f9dbafcb811356154d9be129163c6ee1c145bf9af83",
+          "sha256:30ba7fe4cbe5bea00e2f3c0ad2b1b6bc23996b07f6aeb3d0412e1770b3b792b9",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "sha256:4c13064f2e1c678a7d6bcccc47873831994c80b7c4b9fc3d4d2d9aadfd9afbf5",
+          "sha256:698299b8d6c99ee39eb3481934d4e3daed770577f1852c11ec0dac8b618f3820",
+          "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e",
+          "sha256:8788999dbce1d937f696de4ef11de922841f8de111f79839af0e646682c12724",
+          "sha256:76f9b2a937beaf401212f4db8ebefa4b1bc449b1081c37a11fa82c854f7b6f58",
+          "sha256:ac0c6faef75a9bf5d7ab241e696997acdd2ceff33d9593776949ee2a4f357e2c",
+          "sha256:5ca8b728e7915af6026d8c4f8abc7683db09114300b00b21208b08c64f36678f",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        ]
+      },
+      "config": {
+        "Entrypoint": [
+          "/sbin/tini",
+          "--",
+          "/opt/recipes/boot.sh"
+        ],
+        "Env": [
+          "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+          "PYTHON_VERSION=3.13.7",
+          "PYTHON_SHA256=5462f9099dfd30e238def83c71d91897d8caa5ff6ebc7a50f14d4802cdaaa79a",
+          "PYTHONUNBUFFERED=1",
+          "DOCKER=true"
+        ],
+        "Labels": {
+          "org.opencontainers.image.created": "2025-09-19T15:03:44.636Z",
+          "org.opencontainers.image.description": "Application for managing recipes, planning meals, building shopping lists and much much more!",
+          "org.opencontainers.image.licenses": "NOASSERTION",
+          "org.opencontainers.image.revision": "eb224a769d0c9b016d39de05fe1c093896ad28a1",
+          "org.opencontainers.image.source": "https://github.com/TandoorRecipes/recipes",
+          "org.opencontainers.image.title": "recipes",
+          "org.opencontainers.image.url": "https://github.com/TandoorRecipes/recipes",
+          "org.opencontainers.image.version": "2.2.3"
+        },
+        "WorkingDir": "/opt/recipes",
+        "ExposedPorts": {
+          "80/tcp": {},
+          "8080/tcp": {}
+        }
+      }
+    },
+    "Layers": [
+      {
+        "Size": 8596480,
+        "Digest": "sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8",
+        "DiffID": "sha256:418dccb7d85a63a6aa574439840f7a6fa6fd2321b3e2394568a317735e867d35"
+      },
+      {
+        "Size": 1656320,
+        "Digest": "sha256:5eb8a9c5976411471d87a5d086527c97df3a4a7079a77ded1e1fb2b5331da93d",
+        "DiffID": "sha256:062ca0d899245921454443a8bca59333e9f65ce0971881e23a4ed8e38ae5eb7f"
+      },
+      {
+        "Size": 36917760,
+        "Digest": "sha256:c987cde7f297538d20368a05487f2602d9cf8e1894c512793ac231250e6b071e",
+        "DiffID": "sha256:d2a0c772fb406ad6f280d8c4ff7f414f5062093bacd6198b945b79b8ff84afdb"
+      },
+      {
+        "Size": 5120,
+        "Digest": "sha256:ea971c774474c7c5c5e8de6d7c391c9014580ffa864f2333060d2df50b85d4dd",
+        "DiffID": "sha256:7e8988ece024a5f9dca59003db4b857c72fdb3e33bda91d6b97b8d066ca04cd1"
+      },
+      {
+        "Size": 107396608,
+        "Digest": "sha256:53aaed31b5d877580f8c4cb5926a4ea18f75304937bc1143126ad5b7fc8de5bb",
+        "DiffID": "sha256:d85dd8f178e16abe34fa1f9dbafcb811356154d9be129163c6ee1c145bf9af83"
+      },
+      {
+        "Size": 2048,
+        "Digest": "sha256:d8a25ba09267a3d7403a011625fb645eacc6dcbc197dd8667dd90c088bdeedbe",
+        "DiffID": "sha256:30ba7fe4cbe5bea00e2f3c0ad2b1b6bc23996b07f6aeb3d0412e1770b3b792b9"
+      },
+      {
+        "Size": 1024,
+        "Digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+        "DiffID": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+      },
+      {
+        "Size": 4096,
+        "Digest": "sha256:e59e745db8f0314e79fc16c05dee49a9aceffcdc6b66d7a768cf87112a2192c3",
+        "DiffID": "sha256:4c13064f2e1c678a7d6bcccc47873831994c80b7c4b9fc3d4d2d9aadfd9afbf5"
+      },
+      {
+        "Size": 4096,
+        "Digest": "sha256:75912ad842706383908144b15c5a8dc4d8c668ce47abae2c3dac9968440ceebc",
+        "DiffID": "sha256:698299b8d6c99ee39eb3481934d4e3daed770577f1852c11ec0dac8b618f3820"
+      },
+      {
+        "Size": 414885888,
+        "Digest": "sha256:5b5c46a491b0ed0540cdb3238471fccfa5c0a2dadc5cd482d0877436968e95d8",
+        "DiffID": "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e"
+      },
+      {
+        "Size": 44811776,
+        "Digest": "sha256:27fc4390ce5343f620232740fee57e3de7a9fb74713ba7c8357d6bd6816a0c6a",
+        "DiffID": "sha256:8788999dbce1d937f696de4ef11de922841f8de111f79839af0e646682c12724"
+      },
+      {
+        "Size": 5120,
+        "Digest": "sha256:4cb83199384561194f1f805c02e4c0d2df3f3c14a0a4f01b236a38c0ff72fddc",
+        "DiffID": "sha256:76f9b2a937beaf401212f4db8ebefa4b1bc449b1081c37a11fa82c854f7b6f58"
+      },
+      {
+        "Size": 4096,
+        "Digest": "sha256:478dd0387d11087b10aa697e817edfb2f0a74aafe80418fd0635524a7bce1b80",
+        "DiffID": "sha256:ac0c6faef75a9bf5d7ab241e696997acdd2ceff33d9593776949ee2a4f357e2c"
+      },
+      {
+        "Size": 2560,
+        "Digest": "sha256:303c36baf55206122c215d0e9c3de15a71e9e518516eff89e7111f7e16512a88",
+        "DiffID": "sha256:5ca8b728e7915af6026d8c4f8abc7683db09114300b00b21208b08c64f36678f"
+      },
+      {
+        "Size": 1024,
+        "Digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+        "DiffID": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+      }
+    ]
+  },
+  "Results": [
+    {
+      "Target": "vabene1111/recipes:latest (alpine 3.22.1)",
+      "Class": "os-pkgs",
+      "Type": "alpine",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2025-59375",
+          "PkgID": "libexpat@2.7.1-r0",
+          "PkgName": "libexpat",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libexpat@2.7.1-r0?arch=x86_64\u0026distro=3.22.1",
+            "UID": "91a0eaab833dbcf2"
+          },
+          "InstalledVersion": "2.7.1-r0",
+          "FixedVersion": "2.7.2-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:53aaed31b5d877580f8c4cb5926a4ea18f75304937bc1143126ad5b7fc8de5bb",
+            "DiffID": "sha256:d85dd8f178e16abe34fa1f9dbafcb811356154d9be129163c6ee1c145bf9af83"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-59375",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Title": "expat: libexpat in Expat allows attackers to trigger large dynamic memory allocations via a small document that is submitted for parsing",
+          "Description": "libexpat in Expat before 2.7.2 allows attackers to trigger large dynamic memory allocations via a small document that is submitted for parsing.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-770"
+          ],
+          "VendorSeverity": {
+            "redhat": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2025-59375",
+            "https://github.com/libexpat/libexpat/blob/676a4c531ec768732fac215da9730b5f50fbd2bf/expat/Changes#L45-L74",
+            "https://github.com/libexpat/libexpat/blob/R_2_7_2/expat/Changes",
+            "https://github.com/libexpat/libexpat/issues/1018",
+            "https://github.com/libexpat/libexpat/pull/1034",
+            "https://issues.oss-fuzz.com/issues/439133977",
+            "https://nvd.nist.gov/vuln/detail/CVE-2025-59375",
+            "https://www.cve.org/CVERecord?id=CVE-2025-59375"
+          ],
+          "PublishedDate": "2025-09-15T03:15:40.92Z",
+          "LastModifiedDate": "2025-09-17T14:15:40.913Z"
+        }
+      ]
+    },
+    {
+      "Target": "Node.js",
+      "Class": "lang-pkgs",
+      "Type": "node-pkg"
+    },
+    {
+      "Target": "Python",
+      "Class": "lang-pkgs",
+      "Type": "python-pkg",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2025-50181",
+          "PkgName": "urllib3",
+          "PkgPath": "opt/recipes/venv/lib/python3.13/site-packages/urllib3-1.26.20.dist-info/METADATA",
+          "PkgIdentifier": {
+            "PURL": "pkg:pypi/urllib3@1.26.20",
+            "UID": "2855799035f2ab75"
+          },
+          "InstalledVersion": "1.26.20",
+          "FixedVersion": "2.5.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5b5c46a491b0ed0540cdb3238471fccfa5c0a2dadc5cd482d0877436968e95d8",
+            "DiffID": "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-50181",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory pip",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Apip"
+          },
+          "Title": "urllib3: urllib3 redirects are not disabled when retries are disabled on PoolManager instantiation",
+          "Description": "urllib3 is a user-friendly HTTP client library for Python. Prior to 2.5.0, it is possible to disable redirects for all requests by instantiating a PoolManager and specifying retries in a way that disable redirects. By default, requests and botocore users are not affected. An application attempting to mitigate SSRF or open redirect vulnerabilities by disabling redirects at the PoolManager level will remain vulnerable. This issue has been patched in version 2.5.0.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-601"
+          ],
+          "VendorSeverity": {
+            "amazon": 2,
+            "azure": 2,
+            "ghsa": 2,
+            "nvd": 2,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.3
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2025-50181",
+            "https://github.com/urllib3/urllib3",
+            "https://github.com/urllib3/urllib3/commit/f05b1329126d5be6de501f9d1e3e36738bc08857",
+            "https://github.com/urllib3/urllib3/security/advisories/GHSA-pq67-6m6q-mj2v",
+            "https://nvd.nist.gov/vuln/detail/CVE-2025-50181",
+            "https://ubuntu.com/security/notices/USN-7599-1",
+            "https://ubuntu.com/security/notices/USN-7599-2",
+            "https://www.cve.org/CVERecord?id=CVE-2025-50181"
+          ],
+          "PublishedDate": "2025-06-19T01:15:24.453Z",
+          "LastModifiedDate": "2025-09-18T13:51:10.24Z"
+        }
+      ]
+    },
+    {
+      "Target": "/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/__pycache__/_types.cpython-313.pyc",
+      "Class": "secret",
+      "Secrets": [
+        {
+          "RuleID": "slack-web-hook",
+          "Category": "Slack",
+          "Severity": "MEDIUM",
+          "Title": "Slack Webhook",
+          "StartLine": 823,
+          "EndLine": 823,
+          "Code": {
+            "Lines": null
+          },
+          "Match": "Binary file \"/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/__pycache__/_types.cpython-313.pyc\" matches a rule \"Slack Webhook\"",
+          "Layer": {
+            "Digest": "sha256:5b5c46a491b0ed0540cdb3238471fccfa5c0a2dadc5cd482d0877436968e95d8",
+            "DiffID": "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e",
+            "CreatedBy": "RUN /bin/sh -c apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev zlib-dev jpeg-dev libwebp-dev openssl-dev libffi-dev cargo openldap-dev python3-dev xmlsec-dev xmlsec build-base g++ curl rust \u0026\u0026     python -m venv venv \u0026\u0026     /opt/recipes/venv/bin/python -m pip install --upgrade pip \u0026\u0026     venv/bin/pip debug -v \u0026\u0026     venv/bin/pip install wheel==0.45.1 \u0026\u0026     venv/bin/pip install setuptools_rust==1.10.2 \u0026\u0026     venv/bin/pip install -r requirements.txt --no-cache-dir \u0026\u0026    apk --purge del .build-deps # buildkit"
+          },
+          "Offset": 16603
+        }
+      ]
+    },
+    {
+      "Target": "/opt/recipes/venv/lib/python3.13/site-packages/litellm/proxy/_types.py",
+      "Class": "secret",
+      "Secrets": [
+        {
+          "RuleID": "slack-web-hook",
+          "Category": "Slack",
+          "Severity": "MEDIUM",
+          "Title": "Slack Webhook",
+          "StartLine": 1369,
+          "EndLine": 1369,
+          "Code": {
+            "Lines": [
+              {
+                "Number": 1367,
+                "Content": "    alert_to_webhook_url: Optional[Dict] = Field(",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "    alert_to_webhook_url: Optional[Dict] = Field(",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 1368,
+                "Content": "        None,",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "        None,",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 1369,
+                "Content": "bhook_url: {'budget_alerts': '*****************************************************************************'}`\",",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "bhook_url: {'budget_alerts': '*****************************************************************************'}`\",",
+                "FirstCause": true,
+                "LastCause": true
+              },
+              {
+                "Number": 1370,
+                "Content": "    )",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "    )",
+                "FirstCause": false,
+                "LastCause": false
+              }
+            ]
+          },
+          "Match": "bhook_url: {'budget_alerts': '*****************************************************************************'}`\",",
+          "Layer": {
+            "Digest": "sha256:5b5c46a491b0ed0540cdb3238471fccfa5c0a2dadc5cd482d0877436968e95d8",
+            "DiffID": "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e",
+            "CreatedBy": "RUN /bin/sh -c apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev zlib-dev jpeg-dev libwebp-dev openssl-dev libffi-dev cargo openldap-dev python3-dev xmlsec-dev xmlsec build-base g++ curl rust \u0026\u0026     python -m venv venv \u0026\u0026     /opt/recipes/venv/bin/python -m pip install --upgrade pip \u0026\u0026     venv/bin/pip debug -v \u0026\u0026     venv/bin/pip install wheel==0.45.1 \u0026\u0026     venv/bin/pip install setuptools_rust==1.10.2 \u0026\u0026     venv/bin/pip install -r requirements.txt --no-cache-dir \u0026\u0026    apk --purge del .build-deps # buildkit"
+          },
+          "Offset": 42555
+        }
+      ]
+    },
+    {
+      "Target": "/opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/client.key",
+      "Class": "secret",
+      "Secrets": [
+        {
+          "RuleID": "private-key",
+          "Category": "AsymmetricPrivateKey",
+          "Severity": "HIGH",
+          "Title": "Asymmetric Private Key",
+          "StartLine": 2,
+          "EndLine": 27,
+          "Code": {
+            "Lines": [
+              {
+                "Number": 1,
+                "Content": "-----BEGIN PRIVATE KEY-----",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "-----BEGIN PRIVATE KEY-----",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 2,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": true,
+                "LastCause": false
+              },
+              {
+                "Number": 3,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 4,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 5,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 6,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 7,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 8,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 9,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 10,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 11,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 12,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 13,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 14,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 15,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 16,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 17,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 18,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 19,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 20,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 21,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 22,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 23,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 24,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 25,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 26,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 27,
+                "Content": "************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "************************",
+                "FirstCause": false,
+                "LastCause": true
+              },
+              {
+                "Number": 28,
+                "Content": "-----END PRIVATE KEY-----",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "-----END PRIVATE KEY-----",
+                "FirstCause": false,
+                "LastCause": false
+              }
+            ]
+          },
+          "Match": "****************************************************************",
+          "Layer": {
+            "Digest": "sha256:5b5c46a491b0ed0540cdb3238471fccfa5c0a2dadc5cd482d0877436968e95d8",
+            "DiffID": "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e",
+            "CreatedBy": "RUN /bin/sh -c apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev zlib-dev jpeg-dev libwebp-dev openssl-dev libffi-dev cargo openldap-dev python3-dev xmlsec-dev xmlsec build-base g++ curl rust \u0026\u0026     python -m venv venv \u0026\u0026     /opt/recipes/venv/bin/python -m pip install --upgrade pip \u0026\u0026     venv/bin/pip debug -v \u0026\u0026     venv/bin/pip install wheel==0.45.1 \u0026\u0026     venv/bin/pip install setuptools_rust==1.10.2 \u0026\u0026     venv/bin/pip install -r requirements.txt --no-cache-dir \u0026\u0026    apk --purge del .build-deps # buildkit"
+          },
+          "Offset": 28
+        }
+      ]
+    },
+    {
+      "Target": "/opt/recipes/venv/lib/python3.13/site-packages/slapdtest/certs/server.key",
+      "Class": "secret",
+      "Secrets": [
+        {
+          "RuleID": "private-key",
+          "Category": "AsymmetricPrivateKey",
+          "Severity": "HIGH",
+          "Title": "Asymmetric Private Key",
+          "StartLine": 2,
+          "EndLine": 27,
+          "Code": {
+            "Lines": [
+              {
+                "Number": 1,
+                "Content": "-----BEGIN PRIVATE KEY-----",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "-----BEGIN PRIVATE KEY-----",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 2,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": true,
+                "LastCause": false
+              },
+              {
+                "Number": 3,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 4,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 5,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 6,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 7,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 8,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 9,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 10,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 11,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 12,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 13,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 14,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 15,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 16,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 17,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 18,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 19,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 20,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 21,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 22,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 23,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 24,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 25,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 26,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 27,
+                "Content": "************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "************************",
+                "FirstCause": false,
+                "LastCause": true
+              },
+              {
+                "Number": 28,
+                "Content": "-----END PRIVATE KEY-----",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "-----END PRIVATE KEY-----",
+                "FirstCause": false,
+                "LastCause": false
+              }
+            ]
+          },
+          "Match": "****************************************************************",
+          "Layer": {
+            "Digest": "sha256:5b5c46a491b0ed0540cdb3238471fccfa5c0a2dadc5cd482d0877436968e95d8",
+            "DiffID": "sha256:65dae879efd9cb60973621c8871c462aaf530da5d67729faf2d0ff1465845c9e",
+            "CreatedBy": "RUN /bin/sh -c apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev zlib-dev jpeg-dev libwebp-dev openssl-dev libffi-dev cargo openldap-dev python3-dev xmlsec-dev xmlsec build-base g++ curl rust \u0026\u0026     python -m venv venv \u0026\u0026     /opt/recipes/venv/bin/python -m pip install --upgrade pip \u0026\u0026     venv/bin/pip debug -v \u0026\u0026     venv/bin/pip install wheel==0.45.1 \u0026\u0026     venv/bin/pip install setuptools_rust==1.10.2 \u0026\u0026     venv/bin/pip install -r requirements.txt --no-cache-dir \u0026\u0026    apk --purge del .build-deps # buildkit"
+          },
+          "Offset": 28
+        }
+      ]
+    }
+  ]
+}

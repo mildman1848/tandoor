@@ -1,0 +1,49 @@
+#!/usr/bin/with-contenv bash
+
+echo "Processing LinuxServer.io FILE__ environment variables..."
+
+# Function to process FILE__ prefixed environment variables
+process_file_env() {
+    local file_var file_path env_name
+    while IFS='=' read -r name value; do
+        if [[ $name =~ ^FILE__(.+)$ ]]; then
+            env_name=${BASH_REMATCH[1]}
+            file_path=$value
+
+            # Validate file path format for security
+            if [[ ! $file_path =~ ^[a-zA-Z0-9/_.-]+$ ]]; then
+                echo "⚠ Warning: Invalid file path format: $file_path (for $env_name)"
+                continue
+            fi
+
+            if [[ -f $file_path && -r $file_path ]]; then
+                echo "Processing FILE__ variable: $name -> $env_name"
+                if file_content=$(cat "$file_path" 2>/dev/null); then
+                    export "$env_name=$file_content"
+                    echo "✓ Set $env_name from $file_path"
+                else
+                    echo "⚠ Warning: Could not read FILE__ path: $file_path (for $env_name)"
+                fi
+            else
+                if [[ $env_name == "SECRET_KEY" || $env_name == "POSTGRES_PASSWORD" ]]; then
+                    echo "⚠ Warning: FILE__ path not found or not readable: $file_path (for $env_name)"
+                else
+                    echo "ℹ Info: Optional FILE__ path not found: $file_path (for $env_name) - skipping"
+                fi
+            fi
+        fi
+    done < <(env | grep '^FILE__' || true)
+}
+
+process_file_env
+
+# Process legacy Docker Secrets (backwards compatibility)
+if [[ -d /run/secrets ]]; then
+    echo "Processing legacy Docker Secrets (backwards compatibility)..."
+    [[ -f /run/secrets/tandoor_secret_key ]] && export SECRET_KEY=$(cat /run/secrets/tandoor_secret_key)
+    [[ -f /run/secrets/tandoor_postgres_password ]] && export POSTGRES_PASSWORD=$(cat /run/secrets/tandoor_postgres_password)
+    [[ -f /run/secrets/tandoor_postgres_user ]] && export POSTGRES_USER=$(cat /run/secrets/tandoor_postgres_user)
+    echo "Legacy Docker secrets processed."
+fi
+
+echo "✓ Environment variable processing completed."

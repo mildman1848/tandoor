@@ -1,0 +1,125 @@
+---
+services:
+  tandoor:
+    image: ${IMAGE_NAME:-mildman1848/tandoor}:${IMAGE_TAG:-latest}
+    container_name: tandoor
+    hostname: tandoor
+    restart: unless-stopped
+
+    # Security hardening (basic)
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+
+    # Network configuration
+    ports:
+      - "${HOST:-127.0.0.1}:${EXTERNAL_PORT:-8080}:8080"
+
+    # Environment configuration
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Etc/UTC}
+      - UMASK=${UMASK:-022}
+
+      # Django configuration
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-recipes.settings}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+
+      # Database configuration
+      - DB_ENGINE=${DB_ENGINE:-django.db.backends.postgresql}
+      - POSTGRES_HOST=${POSTGRES_HOST:-db_recipes}
+      - POSTGRES_DB=${POSTGRES_DB:-djangodb}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-djangouser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
+
+      # Media and static files
+      - STATIC_ROOT=${STATIC_ROOT:-/app/staticfiles}
+      - MEDIA_ROOT=${MEDIA_ROOT:-/app/mediafiles}
+
+      # Gunicorn configuration
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-2}
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-120}
+
+      # Optional: FILE__ prefix secrets support
+      - FILE__SECRET_KEY=/run/secrets/tandoor_secret_key
+      - FILE__POSTGRES_PASSWORD=/run/secrets/tandoor_postgres_password
+      - FILE__POSTGRES_USER=/run/secrets/tandoor_postgres_user
+
+      # Additional application configuration
+
+    # Volume mounts
+    volumes:
+      - ${CONFIG_PATH:-./config}:/config
+      - ${MEDIAFILES_PATH:-./mediafiles}:/app/mediafiles
+      - ${STATICFILES_PATH:-./staticfiles}:/app/staticfiles
+      - ${LOGS_PATH:-./logs}:/config/logs
+
+    # Optional: Docker secrets support
+    secrets:
+      - tandoor_secret_key
+      - tandoor_postgres_password
+      - tandoor_postgres_user
+
+    # Health check (process-based for security)
+    healthcheck:
+      test: ["CMD", "sh", "-c", "ps aux | grep -v grep | grep tandoor || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Dependencies
+    depends_on:
+      db_recipes:
+        condition: service_healthy
+
+    # Labels for better organization
+    labels:
+      - "org.opencontainers.image.title=tandoor"
+      - "org.opencontainers.image.description=Tandoor Recipes - Recipe management server with S6 Overlay"
+      - "org.opencontainers.image.vendor=Mildman1848"
+
+  # Database service
+  db_recipes:
+    image: postgres:16-alpine
+    container_name: tandoor_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-djangodb}
+      - POSTGRES_USER=${POSTGRES_USER:-djangouser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
+    volumes:
+      - ${DB_DATA_PATH:-./db}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-djangouser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Docker secrets (optional)
+secrets:
+  tandoor_secret_key:
+    file: ${SECRETS_PATH:-./secrets}/tandoor_secret_key.txt
+  tandoor_postgres_password:
+    file: ${SECRETS_PATH:-./secrets}/tandoor_postgres_password.txt
+  tandoor_postgres_user:
+    file: ${SECRETS_PATH:-./secrets}/tandoor_postgres_user.txt
+
+# Networks (optional)
+networks:
+  default:
+    name: ${NETWORK_NAME:-tandoor_network}
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_SUBNET:-172.18.0.0/16}

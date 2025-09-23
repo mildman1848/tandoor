@@ -1,0 +1,247 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Get version information
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG, Version: $VERSION"
+
+          # Get project version from VERSION file
+          if [ -f VERSION ]; then
+            PROJECT_VERSION=$(cat VERSION)
+          else
+            PROJECT_VERSION="1.0.0"
+          fi
+          echo "project_version=$PROJECT_VERSION" >> $GITHUB_OUTPUT
+
+          # Get application version
+          TANDOOR_VERSION=$(grep "TANDOOR_VERSION=" .env.example | cut -d'=' -f2 | tr -d '"' || echo "1.5.19")
+          echo "tandoor_version=${TANDOOR_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Generate changelog since last release
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -n "$LAST_TAG" ]; then
+            echo "## 🚀 What's Changed" > release_notes.md
+            echo "" >> release_notes.md
+
+            # Get commits since last tag
+            git log --pretty=format:"- %s (%h)" $LAST_TAG..HEAD >> release_notes.md
+            echo "" >> release_notes.md
+          else
+            echo "## 🚀 Initial Release" > release_notes.md
+            echo "" >> release_notes.md
+            echo "First release of tandoor container image." >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          # Add technical details
+          cat >> release_notes.md << 'EOF'
+          ## 🐳 Docker Images
+
+          **Multi-Platform Support:**
+          - `linux/amd64`
+          - `linux/arm64`
+
+          **Docker Hub:**
+          ```bash
+          docker pull mildman1848/tandoor:${{ steps.version.outputs.version }}
+          ```
+
+          **GitHub Container Registry:**
+          ```bash
+          docker pull ghcr.io/mildman1848/tandoor:${{ steps.version.outputs.version }}
+          ```
+
+          ## 📋 Technical Information
+
+          **Based on:**
+          - tandoor ${{ steps.version.outputs.tandoor_version }}
+          - LinuxServer.io Alpine Baseimage 3.22+
+          - S6 Overlay v3
+          - Project Version: ${{ steps.version.outputs.project_version }}
+
+          ## 🚀 Quick Start
+
+          ```bash
+          # Using docker run
+          docker run -d \
+            --name tandoor \
+            -p 8080:8080 \
+            -v ./config:/config \
+            -v ./data:/data \
+            -e PUID=1000 \
+            -e PGID=1000 \
+            -e TZ=Europe/Berlin \
+            mildman1848/tandoor:${{ steps.version.outputs.version }}
+
+          # Using docker-compose
+          git clone https://github.com/mildman1848/tandoor.git
+          cd tandoor
+          make setup
+          docker-compose up -d
+          ```
+
+          ## 🔒 Security Features
+
+          This release includes:
+          - ✅ Non-root container execution
+          - ✅ Comprehensive security hardening
+          - ✅ Automated vulnerability scanning
+          - ✅ SBOM (Software Bill of Materials) attestation
+          - ✅ Multi-layered security controls
+
+          ## 📚 Documentation
+
+          - **English:** [README.md](https://github.com/mildman1848/tandoor/blob/main/README.md)
+          - **Deutsch:** [README.de.md](https://github.com/mildman1848/tandoor/blob/main/README.de.md)
+          - **Security:** [SECURITY.md](https://github.com/mildman1848/tandoor/blob/main/SECURITY.md)
+
+          ## 🆘 Support
+
+          - **Issues:** [GitHub Issues](https://github.com/mildman1848/tandoor/issues)
+          - **Security:** security@mildman1848.dev
+          - **Documentation:** [docs/](https://github.com/mildman1848/tandoor/tree/main/docs)
+
+          ---
+
+          **Full Changelog**: https://github.com/mildman1848/tandoor/compare/${LAST_TAG:-$(git rev-list --max-parents=0 HEAD)}...${{ steps.version.outputs.tag }}
+          EOF
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+
+      - name: Output release info
+        run: |
+          echo "Created release: ${{ steps.create_release.outputs.url }}"
+          echo "Release ID: ${{ steps.create_release.outputs.id }}"
+          echo "Upload URL: ${{ steps.create_release.outputs.upload_url }}"
+
+  trigger-docker-publish:
+    name: Trigger Docker Build & Publish
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Docker Publish Workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: workflow } = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'docker-publish.yml',
+              ref: '${{ needs.create-release.outputs.tag }}',
+              inputs: {
+                force_publish: 'true'
+              }
+            });
+
+            console.log('Triggered Docker Publish workflow for tag: ${{ needs.create-release.outputs.tag }}');
+
+      - name: Wait for Docker Publish
+        run: |
+          echo "Docker publish workflow has been triggered."
+          echo "Monitor progress at: https://github.com/${{ github.repository }}/actions"
+          echo "Tag: ${{ needs.create-release.outputs.tag }}"
+          echo "Version: ${{ needs.create-release.outputs.version }}"
+
+  update-latest-release:
+    name: Update Latest Release Badge
+    needs: [create-release, trigger-docker-publish]
+    runs-on: ubuntu-latest
+    if: always() && needs.create-release.result == 'success'
+    steps:
+      - name: Update repository topics
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { data: repo } = await github.rest.repos.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              });
+
+              const topics = repo.topics || [];
+              const versionTopic = 'v${{ needs.create-release.outputs.version }}';
+
+              // Remove old version topics and add new one
+              const filteredTopics = topics.filter(topic => !topic.startsWith('v'));
+              filteredTopics.push(versionTopic);
+
+              await github.rest.repos.replaceAllTopics({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                names: filteredTopics
+              });
+
+              console.log('Updated repository topics with version:', versionTopic);
+            } catch (error) {
+              console.log('Failed to update topics:', error.message);
+            }
+
+      - name: Create or update release summary
+        run: |
+          echo "## 📦 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** ${{ needs.create-release.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.create-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Released successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🐳 Container Images" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker Hub:** \`mildman1848/tandoor:${{ needs.create-release.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **GHCR:** \`ghcr.io/mildman1848/tandoor:${{ needs.create-release.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Docker images are being built and published" >> $GITHUB_STEP_SUMMARY
+          echo "2. Monitor the [Docker Publish workflow](https://github.com/${{ github.repository }}/actions)" >> $GITHUB_STEP_SUMMARY
+          echo "3. Update any dependent projects" >> $GITHUB_STEP_SUMMARY
+          echo "4. Announce the release if applicable" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,31 @@
+#!/usr/bin/with-contenv bash
+
+echo "Starting tandoor service..."
+echo "Setting directory permissions..."
+
+# Ensure proper ownership
+chown -R abc:abc /app/mediafiles /app/staticfiles 2>/dev/null || true
+
+cd /app
+
+echo "Running Django setup..."
+# Run as abc user
+s6-setuidgid abc /app/venv/bin/python manage.py collectstatic --noinput --clear 2>/dev/null || true
+s6-setuidgid abc /app/venv/bin/python manage.py migrate 2>/dev/null || true
+
+echo "Starting Tandoor Recipes..."
+echo "Config: Django ${DJANGO_SETTINGS_MODULE:-recipes.settings}"
+echo "Debug mode: ${DEBUG:-False}"
+echo "Database: ${DB_ENGINE:-postgresql} at ${POSTGRES_HOST:-db_recipes}:${POSTGRES_PORT:-5432}"
+echo "Static files: ${STATIC_ROOT:-/app/staticfiles}"
+echo "Media files: ${MEDIA_ROOT:-/app/mediafiles}"
+
+# Start gunicorn as abc user
+exec s6-setuidgid abc /app/venv/bin/gunicorn \
+    --bind 0.0.0.0:8080 \
+    --workers ${GUNICORN_WORKERS:-2} \
+    --timeout ${GUNICORN_TIMEOUT:-120} \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    recipes.wsgi:application

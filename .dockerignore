@@ -1,0 +1,367 @@
+# =================================
+# Tandoor Recipes Docker - .dockerignore
+# =================================
+# Optimizes Docker build context by excluding unnecessary files
+# Reduces build time and image size
+
+# =============================
+# SECURITY & SECRETS (CRITICAL)
+# =============================
+# NEVER include sensitive data in Docker context!
+secrets/
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.jks
+*_key.txt
+*_password.txt
+*_secret.txt
+*_token.txt
+
+# Environment files with sensitive data
+.env.local
+.env.production
+.env.secret
+.env.override
+local.env
+personal.env
+
+# Django security files
+django_secret_key*
+session_key*
+db_key*
+config_key*
+
+# Database credentials
+postgres_password*
+mysql_password*
+db_password*
+database_*.txt
+
+# Authentication tokens
+jwt_secret*
+api_key*
+auth_token*
+oauth_*
+github_token*
+docker_token*
+
+# =============================
+# VERSION CONTROL & GIT
+# =============================
+# Git repository (largest exclusion)
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Git hooks and config
+.git/hooks/
+.git/config
+.git/description
+
+# GitHub specific
+.github/
+!.github/workflows/
+!.github/ISSUE_TEMPLATE/
+!.github/PULL_REQUEST_TEMPLATE.md
+
+# =============================
+# DOCKER & CONTAINER FILES
+# =============================
+# Docker runtime data (never needed in build)
+docker-data/
+volumes/
+container-data/
+postgres-data/
+tandoor-data/
+app-data/
+media-files/
+static-files/
+
+# Docker Compose files (not needed in image)
+docker-compose*.yml
+!docker-compose.base.yml
+
+# Docker build artifacts
+.dockerignore.local
+Dockerfile.local
+Dockerfile.dev
+Dockerfile.backup
+
+# Container logs
+logs/
+*.log
+container-logs/
+docker-logs/
+
+# =============================
+# DEVELOPMENT & BUILD FILES
+# =============================
+# Development tools and IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Build artifacts and caches
+build/
+dist/
+.cache/
+.npm/
+.yarn/
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test artifacts
+test-reports/
+coverage/
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+
+# =============================
+# DOCUMENTATION & MEDIA
+# =============================
+# Documentation source (keep built docs)
+docs/
+!docs/README.md
+*.md
+!README.md
+!SECURITY.md
+
+# Images and media (large files)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.mp4
+*.avi
+*.mov
+*.wmv
+
+# Documentation builds
+docs/_build/
+docs/build/
+site/
+
+# =============================
+# BACKUP & TEMPORARY FILES
+# =============================
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+backup-*
+*-backup
+db-backup*
+config-backup*
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+*.temp
+
+# OS temporary files
+Thumbs.db
+.DS_Store
+*.stackdump
+
+# =============================
+# PYTHON & DJANGO SPECIFIC
+# =============================
+# Python virtual environments (large)
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python package files
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+
+# Django runtime files
+*.sqlite3
+*.db
+db.sqlite3
+local_settings.py
+media/
+staticfiles/
+static/
+celerybeat-schedule
+celerybeat.pid
+
+# Python distribution
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# =============================
+# CI/CD & DEPLOYMENT
+# =============================
+# CI/CD artifacts
+.deployment/
+deploy.key
+ansible_vault_pass
+
+# GitHub Actions (exclude most, keep essential)
+.github/workflows/*.yml
+!.github/workflows/docker-publish.yml
+!.github/workflows/security.yml
+
+# =============================
+# ARCHIVES & COMPRESSED FILES
+# =============================
+# Archive files (usually large)
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tgz
+*.txz
+*.7z
+*.rar
+*.war
+*.ear
+*.sar
+*.nar
+
+# Package files
+*.deb
+*.rpm
+*.dmg
+*.pkg
+
+# =============================
+# MONITORING & LOGS
+# =============================
+# Log files
+*.log
+log/
+access.log*
+error.log*
+debug.log*
+
+# Monitoring data
+metrics/
+prometheus-data/
+grafana-data/
+
+# Security scan reports
+trivy-report*
+hadolint-report*
+security-scan*
+vulnerability-report*
+codeql-results*
+
+# SBOM files
+sbom.json
+sbom.xml
+cyclonedx-*
+
+# =============================
+# RUNTIME & CACHE
+# =============================
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
+.lock-wscript
+
+# Cache directories
+.sass-cache/
+
+# =============================
+# PROJECT SPECIFIC
+# =============================
+# Tandoor specific runtime data
+tandoor-media/
+tandoor-static/
+recipe-images/
+user-uploads/
+
+# Test data (large datasets)
+test-data/
+sample-data/
+fixtures/test/
+
+# Development scripts
+dev-scripts/
+local-scripts/
+personal/
+
+# Test certificates
+dev-certs/
+test-ssl/
+localhost.crt
+localhost.key
+
+# =============================
+# DEVELOPMENT DATABASES
+# =============================
+# Local development databases
+*.sqlite
+*.sqlite3
+*.db
+postgres_data/
+mysql_data/
+
+# =============================
+# KEEP ESSENTIAL FILES
+# =============================
+# Force include critical files
+!Dockerfile
+!Dockerfile.multi
+!.dockerignore
+!requirements.txt
+!package.json
+!Makefile
+!LICENSE*
+!README.md
+!SECURITY.md
+!.env.example
+
+# Keep build scripts
+!scripts/build/
+!scripts/deploy/
+!scripts/docker/
+
+# Keep configuration templates
+!config/
+!templates/
+!root/

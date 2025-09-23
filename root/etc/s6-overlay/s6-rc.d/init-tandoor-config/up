@@ -1,0 +1,58 @@
+#!/usr/bin/with-contenv bash
+
+echo "Initializing tandoor configuration..."
+
+# Apply UMASK
+UMASK=${UMASK:-022}
+umask $UMASK
+echo "Applied UMASK: $UMASK"
+
+# Create directory structure
+echo "Creating directory structure..."
+mkdir -p /config /app/mediafiles /app/staticfiles
+
+# Set ownership and permissions
+echo "Setting ownership and permissions..."
+chown -R abc:abc /config /app/mediafiles /app/staticfiles 2>/dev/null || true
+find /config -type d -exec chmod 750 {} \; 2>/dev/null || true
+find /config -type f -exec chmod 640 {} \; 2>/dev/null || true
+
+# Ensure media and static directories have proper permissions
+chmod -R 755 /app/mediafiles 2>/dev/null || true
+chmod -R 755 /app/staticfiles 2>/dev/null || true
+
+# Generate SECRET_KEY if not provided
+if [[ -z "$SECRET_KEY" ]]; then
+    echo "Generating SECRET_KEY..."
+    SECRET_KEY=$(openssl rand -base64 50)
+    export SECRET_KEY
+    echo "SECRET_KEY generated and set"
+fi
+
+# Set Django environment defaults
+export DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-recipes.settings}
+export DEBUG=${DEBUG:-False}
+export STATIC_ROOT=${STATIC_ROOT:-/app/staticfiles}
+export MEDIA_ROOT=${MEDIA_ROOT:-/app/mediafiles}
+
+# Database configuration defaults
+export DB_ENGINE=${DB_ENGINE:-django.db.backends.postgresql}
+export POSTGRES_HOST=${POSTGRES_HOST:-db_recipes}
+export POSTGRES_DB=${POSTGRES_DB:-djangodb}
+export POSTGRES_PORT=${POSTGRES_PORT:-5432}
+export POSTGRES_USER=${POSTGRES_USER:-djangouser}
+
+# Web server configuration
+export ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+export TIMEZONE=${TZ:-Europe/Berlin}
+
+# Gunicorn configuration
+export GUNICORN_WORKERS=${GUNICORN_WORKERS:-2}
+export GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-120}
+
+echo "Validating configuration..."
+if [[ -z "$POSTGRES_PASSWORD" ]]; then
+    echo "⚠ Warning: POSTGRES_PASSWORD not set. Database connection may fail."
+fi
+
+echo "✓ Tandoor configuration initialized successfully."
