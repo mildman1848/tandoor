@@ -33,6 +33,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create missing labels if needed
+        run: |
+          # Create labels if they don't exist
+          gh label create "upstream-update" --color "0366d6" --description "Upstream dependency update available" || true
+          gh label create "automated" --color "fbca04" --description "Automated issue or PR" || true
+          gh label create "enhancement" --color "a2eeef" --description "New feature or request" || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Compare versions and create issue if outdated
         if: steps.current.outputs.version != steps.latest.outputs.version
         run: |
@@ -98,10 +107,23 @@ jobs:
       - name: Get latest base image tags
         id: latest
         run: |
-          # Get the latest 3.22.x version (assuming we want to stay on 3.22 series)
-          LATEST_VERSION=$(gh api repos/${{ env.BASEIMAGE_REPO }}/releases --jq '[.[] | select(.tag_name | startswith("alpine-3.22")) | .tag_name] | .[0]' | sed 's/alpine-//')
+          # Get the latest 3.22.x version from Docker Hub API (more reliable)
+          LATEST_VERSION=$(curl -s "https://registry.hub.docker.com/v2/repositories/linuxserver/baseimage-alpine/tags" | jq -r '.results[] | select(.name | startswith("3.22")) | .name' | head -1)
+          # Fallback to GitHub API if Docker Hub fails
+          if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
+            LATEST_VERSION=$(gh api repos/${{ env.BASEIMAGE_REPO }}/releases --jq '[.[] | select(.tag_name | startswith("alpine-3.22")) | .tag_name] | .[0]' | sed 's/alpine-//' || echo "3.22")
+          fi
           echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
           echo "Latest base image version: $LATEST_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create missing base image labels if needed
+        run: |
+          # Create labels if they don't exist
+          gh label create "base-image-update" --color "0052cc" --description "Base image update available" || true
+          gh label create "automated" --color "fbca04" --description "Automated issue or PR" || true
+          gh label create "enhancement" --color "a2eeef" --description "New feature or request" || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

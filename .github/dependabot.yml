@@ -1,0 +1,55 @@
+version: 2
+updates:
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "mildman1848"
+    assignees:
+      - "mildman1848"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "mildman1848"
+    assignees:
+      - "mildman1848"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # Python dependencies (if requirements files are found)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "mildman1848"
+    assignees:
+      - "mildman1848"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    # Only critical security updates for Python deps since we follow Tandoor upstream
+    allow:
+      - dependency-type: "direct"
+        update-type: "security"
+      - dependency-type: "indirect"
+        update-type: "security"
