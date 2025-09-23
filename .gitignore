@@ -20,6 +20,7 @@ secrets/
 .env.local
 .env.production
 .env.secret
+.env
 
 # Django SECRET_KEY and config
 django_secret_key*
@@ -371,3 +372,11 @@ localhost.key
 !LICENSE*
 !Dockerfile*
 !.dockerignore*
+templates/
+
+# Runtime directories (created during container runtime)
+config/
+data/
+db/
+security/
+security-reports/
