@@ -30,7 +30,11 @@ LABEL org.opencontainers.image.source="https://github.com/mildman1848/tandoor"
 LABEL org.opencontainers.image.url="https://hub.docker.com/r/mildman1848/tandoor"
 LABEL org.opencontainers.image.documentation="https://github.com/mildman1848/tandoor"
 
-# Install Python 3 and dependencies
+# Create application directory
+RUN mkdir -p /app && chown abc:abc /app
+WORKDIR /app
+
+# Install build and runtime packages, build Python deps, then cleanup
 RUN \
     echo "**** install build packages ****" && \
     apk add --no-cache --virtual .build-deps \
@@ -76,30 +80,16 @@ RUN \
         xmlsec && \
     echo "**** create symbolic link for python ****" && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
-    echo "**** cleanup ****" && \
-    apk del .build-deps && \
-    rm -rf \
-        /root/.cache \
-        /tmp/*
-
-# Create application directory
-RUN mkdir -p /app && chown abc:abc /app
-WORKDIR /app
-
-# Download and extract Tandoor Recipes
-RUN \
     echo "**** download Tandoor Recipes ****" && \
     curl -o /tmp/tandoor.tar.gz -L \
         "https://github.com/TandoorRecipes/recipes/archive/refs/tags/${TANDOOR_VERSION}.tar.gz" && \
     tar xf /tmp/tandoor.tar.gz -C /app --strip-components=1 && \
     echo "**** install Python dependencies ****" && \
     sed -i '/# Development/,$d' /app/requirements.txt && \
-    sed -i '/python-ldap/d' /app/requirements.txt && \
     python -m venv /app/venv && \
     /app/venv/bin/python -m pip install --upgrade pip && \
     /app/venv/bin/pip install wheel==0.45.1 && \
     /app/venv/bin/pip install setuptools_rust==1.10.2 && \
-    echo "**** install python-ldap separately with proper dependencies ****" && \\n    /app/venv/bin/pip install python-ldap==3.4.4 --no-cache-dir && 
     /app/venv/bin/pip install -r /app/requirements.txt --no-cache-dir && \
     echo "**** configure nginx ****" && \
     rm -rf /etc/nginx/http.d && \
@@ -110,6 +100,7 @@ RUN \
     /app/venv/bin/python /app/version.py && \
     echo "**** cleanup ****" && \
     find /app -type d -name ".git" | xargs rm -rf && \
+    apk del .build-deps && \
     rm -rf \
         /tmp/* \
         /root/.cache \
