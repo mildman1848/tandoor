@@ -6,6 +6,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.4-1] - 2025-09-24
+
+### 🚀 MAJOR: Tandoor 2.2.4 Migration & White Screen Fix
+- **Version Update**: Upgraded from Tandoor 1.5.19 to 2.2.4 (CRITICAL architecture change)
+- **Multi-Stage Build**: Implemented asset extraction from official Tandoor image
+- **Vue.js/Vite Integration**: Fixed django-vite integration with real 50KB manifest.json
+- **White Screen Resolution**: Login page now functional (4,822 bytes content vs empty)
+- **Django Migrations**: Added missing database migrations to startup sequence
+- **Service Worker**: Implemented PWA support with service-worker.js creation
+
+### 📊 Version Management System
+- **Upstream Validation**: Added mandatory version checking with GitHub API
+- **Build Integration**: version-check target required before builds
+- **Proactive Monitoring**: Prevents future version drift issues
+
+### 🏗️ Build & Infrastructure
+- **Asset Extraction**: `COPY --from=vite_assets` pattern for web applications
+- **Permissions Fix**: Proper abc:abc ownership for Vue.js assets
+- **Documentation**: Updated CLAUDE.md with migration lessons learned
+
+### 🔧 Container Improvements
+- **Health Checks**: Container reports healthy status consistently
+- **HTTP Responses**: Proper 302 redirects to /accounts/login/
+- **Static Files**: 623 files collected successfully
+- **Database Wait**: Robust PostgreSQL readiness checking
+
+### 📚 Documentation Organization
+- **docs/ Structure**: Moved LINUXSERVER.md files to docs/ directory
+- **Best Practices**: Documented multi-stage build patterns for future projects
+
 ### 🔧 Critical S6 Overlay Services Completion (2025-09-23)
 
 #### LinuxServer.io S6 Service Structure Fixed
