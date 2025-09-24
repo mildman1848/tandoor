@@ -1,0 +1,55 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+echo "Processing custom files and initialization..."
+
+# LinuxServer.io Custom Scripts support
+# Scripts in /custom-cont-init.d run before services start
+
+if [[ -d /custom-cont-init.d ]]; then
+    echo "Found custom init scripts directory: /custom-cont-init.d"
+
+    # Find and execute all executable files
+    find /custom-cont-init.d -type f -executable | sort | while IFS= read -r script; do
+        if [[ -f "$script" ]]; then
+            echo "Executing custom init script: $(basename "$script")"
+            if bash "$script"; then
+                echo "✓ Successfully executed: $(basename "$script")"
+            else
+                echo "✗ Failed to execute: $(basename "$script")"
+            fi
+        fi
+    done
+
+    echo "✓ Custom init scripts processed"
+else
+    echo "No /custom-cont-init.d directory found, skipping custom scripts"
+fi
+
+# Set UMASK if specified (LinuxServer.io standard)
+if [[ -n "${UMASK}" ]]; then
+    echo "Setting UMASK to: ${UMASK}"
+    umask "${UMASK}"
+    echo "✓ UMASK set to: ${UMASK}"
+else
+    # Default UMASK for LinuxServer.io containers
+    echo "Setting default UMASK: 022"
+    umask 022
+fi
+
+# Ensure abc user exists and has proper setup
+if ! id abc >/dev/null 2>&1; then
+    echo "Creating abc user..."
+    useradd -u 911 -U -d /config -s /bin/false abc
+    usermod -G users abc
+fi
+
+# Apply PUID/PGID changes if specified
+if [[ "${PUID}" != "911" ]] || [[ "${PGID}" != "911" ]]; then
+    echo "Updating abc user UID/GID to ${PUID}:${PGID}..."
+    groupmod -g "${PGID}" abc 2>/dev/null || groupmod -g "${PGID}" -o abc
+    usermod -u "${PUID}" -g "${PGID}" abc 2>/dev/null || usermod -u "${PUID}" -g "${PGID}" -o abc
+    echo "✓ Updated abc user to ${PUID}:${PGID}"
+fi
+
+echo "✓ Custom files and initialization completed"

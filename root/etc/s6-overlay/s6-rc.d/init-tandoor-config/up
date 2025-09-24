@@ -31,7 +31,7 @@ fi
 
 # Set Django environment defaults
 export DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-recipes.settings}
-export DEBUG=${DEBUG:-False}
+export DEBUG=${DEBUG:-0}
 export STATIC_ROOT=${STATIC_ROOT:-/app/staticfiles}
 export MEDIA_ROOT=${MEDIA_ROOT:-/app/mediafiles}
 

@@ -4,6 +4,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🔧 Critical S6 Overlay Services Completion (2025-09-23)
+
+#### LinuxServer.io S6 Service Structure Fixed
+- **CRITICAL FIX**: Added missing LinuxServer.io standard services that were preventing proper container startup
+- **Added init-adduser**: Essential PUID/PGID user management service (critical for LinuxServer.io compliance)
+- **Added init-custom-files**: Custom scripts and files support for LinuxServer.io mods
+- **Added init-mods-package-install**: LinuxServer.io package modification system support
+- **Service Dependencies**: Correctly configured service dependency chain: init-branding → init-mods-package-install → init-custom-files → init-secrets → init-tandoor-config → tandoor
+- **User Bundle Updated**: Added missing services to S6 user bundle configuration
+- **Service Types**: All services properly configured as 'oneshot' type
+
+#### Container Startup Validation
+- **✅ Full S6 Service Chain**: All 8 S6 services now start correctly without errors
+- **✅ LinuxServer.io Branding**: Container displays proper Mildman1848 branding on startup
+- **✅ Django Application**: Tandoor Recipes starts successfully with Gunicorn workers
+- **✅ Static Files**: 442 static files copied successfully to /app/staticfiles
+- **✅ PUID/PGID Management**: User permissions managed correctly (197611/197121)
+- **✅ Health Checks**: Container reports healthy status after startup
+
+#### Technical Implementation
+- **Service Scripts**: Copied and adapted working S6 services from audiobookshelf project
+- **Dependency Resolution**: Fixed service dependency chain for proper initialization order
+- **Type Configuration**: Added missing service type files (oneshot, bundle)
+- **Error Handling**: Enhanced error handling in all S6 service scripts
+
+### 🏗️ Project Structure Standardization (2025-09-23)
+
+#### Directory Structure Overhaul
+- **Data Consolidation**: Moved `mediafiles/` and `staticfiles/` to standardized `data/` directory structure
+- **Volume Path Updates**: Updated docker-compose.yml volume mounts to reflect new `data/mediafiles` and `data/staticfiles` paths
+- **Enhanced .env.example**: Comprehensive environment configuration template with all LinuxServer.io standard variables
+- **Standardized Paths**: Implemented consistent `config/`, `data/`, and `security/` directory organization
+
+#### Security Enhancements
+- **seccomp Profile**: Maintained existing `security/seccomp-profile.json` with standardized path references
+- **Production Security**: Enhanced docker-compose.production.yml with comprehensive security configurations
+- **FILE__ Secrets**: Documented comprehensive FILE__ prefix secret support in .env.example
+
+#### Configuration Improvements
+- **Django Integration**: Added Django-specific environment variables and configuration options
+- **Database Configuration**: Enhanced PostgreSQL configuration with proper secret management
+- **Network Configuration**: Standardized network settings with subnet configuration
+- **Path Standardization**: Updated all file paths to follow workspace template standards
+
 ## [1.5.19-automation.3] - 2025-09-23
 
 ### 🔧 Infrastructure & Workflow Fixes

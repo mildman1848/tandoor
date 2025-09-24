@@ -3,15 +3,108 @@
 echo "Starting tandoor service..."
 echo "Setting directory permissions..."
 
+# Load secrets from environment file created by init-secrets
+if [[ -f /tmp/secrets.env ]]; then
+    echo "Loading secrets from environment file..."
+    source /tmp/secrets.env
+    echo "✓ Secrets loaded successfully"
+else
+    echo "⚠ Warning: Secrets environment file not found"
+fi
+
 # Ensure proper ownership
 chown -R abc:abc /app/mediafiles /app/staticfiles 2>/dev/null || true
 
 cd /app
 
-echo "Running Django setup..."
+echo "Waiting for database to be ready..."
+# Wait for database using pg_isready like original image
+attempt=0
+max_attempts=20
+while ! pg_isready --host=${POSTGRES_HOST:-db_recipes} --port=${POSTGRES_PORT:-5432} --user=${POSTGRES_USER:-djangouser} -q; do
+    attempt=$((attempt+1))
+    if [ $attempt -gt $max_attempts ]; then
+        echo "❌ Database not reachable. Maximum attempts exceeded."
+        echo "Please check logs above - misconfiguration is very likely."
+        echo "Make sure the DB container is up and POSTGRES_HOST is set properly."
+        exit 1
+    fi
+    echo "Waiting for database... (attempt $attempt/$max_attempts)"
+    sleep 5
+done
+echo "✓ Database is ready"
+
+echo "Migrating database..."
+# Run database migrations as abc user (CRITICAL - this was missing!)
+s6-setuidgid abc /app/venv/bin/python manage.py migrate
+
+echo "Collecting static files..."
 # Run as abc user
 s6-setuidgid abc /app/venv/bin/python manage.py collectstatic --noinput --clear 2>/dev/null || true
 
+echo "Creating webpack-stats.json for Vue.js support..."
+# Create comprehensive webpack-stats.json with all required bundles
+mkdir -p /app/vue
+cat > /app/vue/webpack-stats.json << 'EOF'
+{
+  "status": "done",
+  "publicPath": "/static/vue/",
+  "chunks": {
+    "app": [
+      {
+        "name": "app.js",
+        "publicPath": "/static/js/app.js",
+        "path": "/app/staticfiles/js/app.js"
+      }
+    ],
+    "recipe_search_view": [
+      {
+        "name": "recipe_search_view.js",
+        "publicPath": "/static/js/recipe_search_view.js",
+        "path": "/app/staticfiles/js/recipe_search_view.js"
+      }
+    ],
+    "recipe_view": [
+      {
+        "name": "recipe_view.js",
+        "publicPath": "/static/js/recipe_view.js",
+        "path": "/app/staticfiles/js/recipe_view.js"
+      }
+    ],
+    "recipe_edit": [
+      {
+        "name": "recipe_edit.js",
+        "publicPath": "/static/js/recipe_edit.js",
+        "path": "/app/staticfiles/js/recipe_edit.js"
+      }
+    ],
+    "shopping_view": [
+      {
+        "name": "shopping_view.js",
+        "publicPath": "/static/js/shopping_view.js",
+        "path": "/app/staticfiles/js/shopping_view.js"
+      }
+    ],
+    "meal_plan_view": [
+      {
+        "name": "meal_plan_view.js",
+        "publicPath": "/static/js/meal_plan_view.js",
+        "path": "/app/staticfiles/js/meal_plan_view.js"
+      }
+    ],
+    "recipe_list": [
+      {
+        "name": "recipe_list.js",
+        "publicPath": "/static/js/recipe_list.js",
+        "path": "/app/staticfiles/js/recipe_list.js"
+      }
+    ]
+  }
+}
+EOF
+chown abc:abc /app/vue/webpack-stats.json
+chmod 644 /app/vue/webpack-stats.json
+echo "✓ webpack-stats.json created with comprehensive bundle support"
 
 echo "Starting Tandoor Recipes..."
 echo "Config: Django ${DJANGO_SETTINGS_MODULE:-recipes.settings}"
@@ -20,8 +113,12 @@ echo "Database: ${DB_ENGINE:-postgresql} at ${POSTGRES_HOST:-db_recipes}:${POSTG
 echo "Static files: ${STATIC_ROOT:-/app/staticfiles}"
 echo "Media files: ${MEDIA_ROOT:-/app/mediafiles}"
 
-# Start gunicorn as abc user
-exec s6-setuidgid abc /app/venv/bin/gunicorn \
+# Start gunicorn as abc user with proper environment
+exec s6-setuidgid abc env \
+    SECRET_KEY="$SECRET_KEY" \
+    POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+    POSTGRES_USER="$POSTGRES_USER" \
+    /app/venv/bin/gunicorn \
     --bind 0.0.0.0:8080 \
     --workers ${GUNICORN_WORKERS:-2} \
     --timeout ${GUNICORN_TIMEOUT:-120} \

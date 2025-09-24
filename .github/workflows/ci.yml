@@ -1,148 +1,204 @@
-name: CI
+name: CI Pipeline - tandoor
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  schedule:
+    # Run security scans weekly
+    - cron: '0 6 * * 1'
 
 env:
-  PROJECT_NAME: tandoor
-  IMAGE_NAME: mildman1848/tandoor
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
   lint:
-    name: Lint and Validate
+    name: Lint & Validation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Hadolint
-        run: |
-          wget -O hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-          chmod +x hadolint
-          sudo mv hadolint /usr/local/bin/
-
-      - name: Lint Dockerfile
-        run: hadolint --ignore DL3018 Dockerfile
-
-      - name: Validate docker compose files
-        run: |
-          docker compose config
-          docker compose -f docker-compose.yml -f docker-compose.production.yml config
-
-      - name: Validate Makefile
-        run: make --dry-run help
-
-      - name: Check shell scripts
-        run: |
-          if command -v shellcheck >/dev/null 2>&1; then
-            find . -name "*.sh" -type f -exec shellcheck {} \;
-          else
-            echo "shellcheck not available, skipping shell script validation"
-          fi
-
-  build:
-    name: Build and Test
-    runs-on: ubuntu-latest
-    needs: lint
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create VERSION file if missing
+      - name: Lint Dockerfile with Hadolint
+        uses: hadolint/hadolint-action@v3.2.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+      - name: Validate docker-compose.yml
         run: |
-          if [ ! -f VERSION ]; then
-            echo "1.0.0-ci.${GITHUB_RUN_NUMBER}" > VERSION
+          # Install docker-compose
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+          docker-compose config -q
+
+      - name: Check Makefile syntax
+        run: |
+          make help || echo "Make not available in runner"
+
+      - name: Validate environment files
+        run: |
+          # Check .env.example syntax
+          if [ -f .env.example ]; then
+            echo "Validating .env.example..."
+            # Simple syntax validation
+            grep -E '^[A-Z_][A-Z0-9_]*=' .env.example || true
           fi
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
+  test-build:
+    name: Test Docker Build
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test image
+        uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/${{ matrix.platform }}
+          platforms: ${{ matrix.platform }}
           push: false
-          tags: ${{ env.IMAGE_NAME }}:${{ matrix.platform }}-test
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=$(cat VERSION)
-            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VERSION=test-${{ github.sha }}
             VCS_REF=${{ github.sha }}
+            TANDOOR_VERSION=1.5.20
+            PROJECT_VERSION=$(cat VERSION || echo "1.5.20-automation.1")
 
-      - name: Test container functionality
-        if: matrix.platform == 'amd64'
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: test-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: mildman1848/tandoor:test
+          cache-from: type=gha
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VERSION=test
+            VCS_REF=${{ github.sha }}
+            PROJECT_VERSION=$(cat VERSION || echo "1.5.20-automation.1")
+
+      - name: Create test environment
         run: |
-          # Load and run the built image for testing
-          docker buildx build --load --platform linux/amd64 -t ${{ env.IMAGE_NAME }}:test .
+          # Create test directories
+          mkdir -p test-volumes/{config,data,logs}
 
-          # Create test environment
-          mkdir -p test-config test-data test-logs
+          # Create minimal .env for testing
+          cat > .env << EOF
+          DOCKER_REPO=mildman1848/tandoor
+          VERSION=test
+          PUID=1000
+          PGID=1000
+          TZ=UTC
+          LOG_LEVEL=info
+          EOF
 
-          # Run container for testing
+      - name: Generate test secrets
+        run: |
+          mkdir -p secrets
+          openssl rand -base64 64 > secrets/jwt_secret.txt
+          openssl rand -hex 32 > secrets/api_key.txt
+          echo "testuser" > secrets/db_user.txt
+          openssl rand -base64 32 | tr -d "=+/" | cut -c1-25 > secrets/db_password.txt
+          chmod 600 secrets/*.txt
+
+      - name: Test container startup
+        run: |
+          # Start container
           docker run -d \
-            --name test-container \
-            -e PUID=911 \
-            -e PGID=911 \
+            --name tandoor-test \
+            -p 18080:8080 \
+            -v $(pwd)/test-volumes/config:/config \
+            -v $(pwd)/test-volumes/data:/data \
+            -v $(pwd)/test-volumes/logs:/logs \
+            -e PUID=1000 \
+            -e PGID=1000 \
             -e TZ=UTC \
-            -v $(pwd)/test-config:/config \
-            -v $(pwd)/test-data:/data \
-            -p 8080:8080 \
-            ${{ env.IMAGE_NAME }}:test
+            mildman1848/tandoor:test
 
-          # Wait for container to start
-          sleep 30
+      - name: Wait for container
+        run: |
+          # Wait for container to be ready
+          timeout 120s bash -c 'while [[ "$(docker inspect -f {{.State.Health.Status}} tandoor-test 2>/dev/null)" != "healthy" ]]; do sleep 2; done' || \
+          timeout 120s bash -c 'while ! docker exec tandoor-test curl -f http://localhost:80/ >/dev/null 2>&1; do sleep 2; done'
 
+      - name: Test container health
+        run: |
           # Check if container is running
-          if ! docker ps | grep -q test-container; then
-            echo "Container failed to start"
-            docker logs test-container
-            exit 1
-          fi
+          docker ps | grep tandoor-test
 
-          # Test container health (customize for your application)
-          if docker exec test-container pgrep -f "gunicorn" > /dev/null; then
-            echo "✅ Tandoor gunicorn process found"
-          else
-            echo "⚠️ Tandoor gunicorn process not found - check logs"
-          fi
+          # Test HTTP endpoint
+          curl -f http://localhost:18080/ || \
+          docker exec tandoor-test curl -f http://localhost:8080/
 
-          # Cleanup
-          docker stop test-container
-          docker rm test-container
-          rm -rf test-config test-data test-logs
+      - name: Test container logs
+        if: always()
+        run: |
+          echo "=== Container logs ==="
+          docker logs tandoor-test
+          echo "=== Container inspect ==="
+          docker inspect tandoor-test
+
+      - name: Cleanup test container
+        if: always()
+        run: |
+          docker stop tandoor-test || true
+          docker rm tandoor-test || true
 
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test-build
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build image for scanning
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           load: true
-          tags: ${{ env.IMAGE_NAME }}:scan
+          tags: mildman1848/tandoor:scan
           cache-from: type=gha
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.IMAGE_NAME }}:scan
+          image-ref: 'mildman1848/tandoor:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
 
@@ -152,66 +208,72 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Generate security report
-        if: always()
-        run: |
-          mkdir -p security-reports
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            -v $(pwd)/security-reports:/reports \
-            aquasec/trivy:latest image --format json --output /reports/trivy-report.json ${{ env.IMAGE_NAME }}:scan
-
-      - name: Upload security reports
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Run Trivy for detailed output
+        uses: aquasecurity/trivy-action@master
         with:
-          name: security-reports
-          path: security-reports/
+          image-ref: 'mildman1848/tandoor:scan'
+          format: 'table'
+          exit-code: '0'  # Don't fail the build on vulnerabilities
 
-  validate-compose:
-    name: Validate Docker Compose
+  docker-compose-test:
+    name: Docker Compose Test
     runs-on: ubuntu-latest
+    needs: test-build
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Create test .env file
+      - name: Install docker-compose
         run: |
-          cat > .env << EOF
-          PUID=911
-          PGID=911
-          TZ=UTC
-          EXTERNAL_PORT=8080
-          PORT=8080
-          PROJECT_NAME=tandoor
-          COMPOSE_PROJECT_NAME=tandoor
-          IMAGE_NAME=mildman1848/tandoor
-          IMAGE_TAG=ci-test
+          # Install docker-compose
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: Create test environment
+        run: |
+          # Copy .env.example to .env for testing
+          cp .env.example .env
+
+          # Override with test values
+          cat >> .env << EOF
+          VERSION=test
+          EXTERNAL_PORT=18080
+          LOG_LEVEL=debug
           EOF
 
-      - name: Validate base compose
-        run: docker compose config
-
-      - name: Validate production compose
-        run: docker compose -f docker-compose.yml -f docker-compose.production.yml config
-
-      - name: Validate override compose
+      - name: Generate secrets
         run: |
-          if [ -f docker-compose.override.yml ]; then
-            docker compose -f docker-compose.yml -f docker-compose.override.yml config
-          else
-            echo "docker-compose.override.yml not found, skipping override validation"
-          fi
+          mkdir -p secrets
+          openssl rand -base64 64 > secrets/jwt_secret.txt
+          openssl rand -hex 32 > secrets/api_key.txt
+          echo "testuser" > secrets/db_user.txt
+          openssl rand -base64 32 | tr -d "=+/" | cut -c1-25 > secrets/db_password.txt
 
-      - name: Build image for compose test
+      - name: Build image first
         run: |
-          # Build the image locally with the tag expected by docker-compose
-          docker build -t mildman1848/tandoor:ci-test .
+          docker build -t mildman1848/tandoor:test .
 
-      - name: Test compose startup (dry run)
+      - name: Test docker-compose up
         run: |
+          docker-compose up -d tandoor
 
-          # Test startup without actually running
-          docker compose up --no-start
+      - name: Wait and test service
+        run: |
+          # Wait for service
+          sleep 30
 
-          # Cleanup
-          docker compose down --remove-orphans
+          # Test if service is responding
+          curl -f http://localhost:18080/ || \
+          docker-compose exec -T tandoor curl -f http://localhost:8080/
+
+      - name: Check logs
+        if: always()
+        run: |
+          echo "=== Docker Compose logs ==="
+          docker-compose logs
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v

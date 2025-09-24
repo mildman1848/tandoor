@@ -28,8 +28,8 @@ services:
       - UMASK=${UMASK:-022}
 
       # Django configuration
-      - DEBUG=${DEBUG:-False}
-      - SECRET_KEY=${SECRET_KEY:-}
+      - DEBUG=1
+      - SECRET_KEY=hTH03cCPgXRKT4x05Tb9chBuznlH2K4QOJqsTy00NftRmrugBmRdVil73clbgDU
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-recipes.settings}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
 
@@ -38,8 +38,6 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST:-db_recipes}
       - POSTGRES_DB=${POSTGRES_DB:-djangodb}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - POSTGRES_USER=${POSTGRES_USER:-djangouser}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
 
       # Media and static files
       - STATIC_ROOT=${STATIC_ROOT:-/app/staticfiles}
@@ -54,13 +52,17 @@ services:
       - FILE__POSTGRES_PASSWORD=/run/secrets/tandoor_postgres_password
       - FILE__POSTGRES_USER=/run/secrets/tandoor_postgres_user
 
+      # Direct secret values (temporary workaround for S6 environment issues)
+      - POSTGRES_PASSWORD=7wbl5QL8v912PADKREcSdgIayFNHRgBC
+      - POSTGRES_USER=djangouser
+
       # Additional application configuration
 
     # Volume mounts
     volumes:
       - ${CONFIG_PATH:-./config}:/config
-      - ${MEDIAFILES_PATH:-./mediafiles}:/app/mediafiles
-      - ${STATICFILES_PATH:-./staticfiles}:/app/staticfiles
+      - ${MEDIAFILES_PATH:-./data/mediafiles}:/app/mediafiles
+      - ${STATICFILES_PATH:-./data/staticfiles}:/app/staticfiles
       - ${LOGS_PATH:-./logs}:/config/logs
 
     # Optional: Docker secrets support
