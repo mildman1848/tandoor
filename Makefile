@@ -6,7 +6,8 @@ DOCKER_REPO = mildman1848/tandoor
 VERSION ?= latest
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 VCS_REF := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-TANDOOR_VERSION ?= 1.5.19
+TANDOOR_VERSION ?= 2.2.4
+UPSTREAM_REPO = TandoorRecipes/recipes
 
 # Platform support for multi-architecture builds
 PLATFORMS = linux/amd64,linux/arm64
@@ -23,7 +24,7 @@ YELLOW = \033[0;33m
 BLUE = \033[0;34m
 NC = \033[0m # No Color
 
-.PHONY: help build build-multiarch build-manifest build-manifest-push inspect-manifest validate-manifest push test clean lint validate security-scan secrets-generate secrets-rotate secrets-clean secrets-info env-setup env-validate setup
+.PHONY: help build build-multiarch build-manifest build-manifest-push inspect-manifest validate-manifest push test clean lint validate security-scan secrets-generate secrets-rotate secrets-clean secrets-info env-setup env-validate setup version-check
 
 # Default target
 all: help
@@ -41,8 +42,25 @@ help: ## Show this help message
 	@echo "  $(YELLOW)TANDOOR_VERSION$(NC)        tandoor version (default: $(TANDOOR_VERSION))"
 	@echo "  $(YELLOW)PLATFORMS$(NC)             Target platforms (default: $(PLATFORMS))"
 
+## Version Management
+version-check: ## Check if current version is up to date with upstream
+	@echo "$(BLUE)Checking upstream version...$(NC)"
+	@LATEST=$$(curl -s https://api.github.com/repos/$(UPSTREAM_REPO)/releases/latest | grep -o '"tag_name": *"[^"]*"' | sed 's/"tag_name": *"//;s/"//' 2>/dev/null || echo "unknown"); \
+	if [ "$$LATEST" = "unknown" ]; then \
+		echo "$(YELLOW)⚠️  Unable to fetch latest version from GitHub API$(NC)"; \
+		echo "$(YELLOW)Current version: $(TANDOOR_VERSION)$(NC)"; \
+		echo "$(YELLOW)Please check https://github.com/$(UPSTREAM_REPO)/releases manually$(NC)"; \
+	elif [ "$$LATEST" != "$(TANDOOR_VERSION)" ]; then \
+		echo "$(RED)⚠️  OUTDATED: Using $(TANDOOR_VERSION), latest is $$LATEST$(NC)"; \
+		echo "$(YELLOW)Consider updating TANDOOR_VERSION in Makefile and Dockerfile$(NC)"; \
+		echo "$(YELLOW)Update command: sed -i 's/$(TANDOOR_VERSION)/'$$LATEST'/g' Makefile Dockerfile$(NC)"; \
+		echo "$(BLUE)Release info: https://github.com/$(UPSTREAM_REPO)/releases/tag/$$LATEST$(NC)"; \
+	else \
+		echo "$(GREEN)✅ Using latest version: $(TANDOOR_VERSION)$(NC)"; \
+	fi
+
 ## Build targets
-build: ## Build Docker image for current platform
+build: version-check ## Build Docker image for current platform (with version check)
 	@echo "$(GREEN)Building Docker image...$(NC)"
 	$(DOCKER) build \
 		--build-arg BUILD_DATE="$(BUILD_DATE)" \

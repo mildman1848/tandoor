@@ -1,12 +1,15 @@
 # Multi-stage build for Tandoor Recipes based on LinuxServer.io Alpine
+# Extract Vite assets from official Tandoor image
+FROM ghcr.io/tandoorrecipes/recipes:latest AS vite_assets
+
 FROM ghcr.io/linuxserver/baseimage-alpine:3.22
 
 # Build arguments
 ARG BUILD_DATE
 ARG VERSION
 ARG VCS_REF
-ARG TANDOOR_VERSION="1.5.19"
-ARG PROJECT_VERSION="1.5.19-automation.1"
+ARG TANDOOR_VERSION="2.2.4"
+ARG PROJECT_VERSION="2.2.4-automation.1"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -108,6 +111,9 @@ RUN \
 
 # Copy S6 service files
 COPY root/ /
+
+# Copy Vite assets from official Tandoor image
+COPY --from=vite_assets /opt/recipes/cookbook/static/vue3/ /app/cookbook/static/vue3/
 
 # Ports and volumes
 EXPOSE 8080

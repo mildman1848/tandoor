@@ -42,69 +42,55 @@ echo "Collecting static files..."
 # Run as abc user
 s6-setuidgid abc /app/venv/bin/python manage.py collectstatic --noinput --clear 2>/dev/null || true
 
-echo "Creating webpack-stats.json for Vue.js support..."
-# Create comprehensive webpack-stats.json with all required bundles
-mkdir -p /app/vue
-cat > /app/vue/webpack-stats.json << 'EOF'
-{
-  "status": "done",
-  "publicPath": "/static/vue/",
-  "chunks": {
-    "app": [
-      {
-        "name": "app.js",
-        "publicPath": "/static/js/app.js",
-        "path": "/app/staticfiles/js/app.js"
+echo "Setting up Vite assets..."
+# Vite assets are copied during Docker build from official Tandoor image
+# Just ensure proper permissions
+chown -R abc:abc /app/cookbook/static/vue3 2>/dev/null || true
+find /app/cookbook/static/vue3 -type d -exec chmod 755 {} \; 2>/dev/null || true
+find /app/cookbook/static/vue3 -type f -exec chmod 644 {} \; 2>/dev/null || true
+echo "✓ Vite assets configured"
+
+# Create service-worker.js file
+cat > /app/cookbook/static/vue3/service-worker.js << 'EOF'
+// Service Worker for Tandoor Recipes PWA
+// This is a minimal service worker for django-vite compatibility
+
+const CACHE_NAME = 'tandoor-cache-v1';
+const urlsToCache = [
+  '/',
+  '/static/css/app.min.css',
+  '/static/js/app.min.js'
+];
+
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(function(cache) {
+        return cache.addAll(urlsToCache);
+      })
+  );
+});
+
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request)
+      .then(function(response) {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
       }
-    ],
-    "recipe_search_view": [
-      {
-        "name": "recipe_search_view.js",
-        "publicPath": "/static/js/recipe_search_view.js",
-        "path": "/app/staticfiles/js/recipe_search_view.js"
-      }
-    ],
-    "recipe_view": [
-      {
-        "name": "recipe_view.js",
-        "publicPath": "/static/js/recipe_view.js",
-        "path": "/app/staticfiles/js/recipe_view.js"
-      }
-    ],
-    "recipe_edit": [
-      {
-        "name": "recipe_edit.js",
-        "publicPath": "/static/js/recipe_edit.js",
-        "path": "/app/staticfiles/js/recipe_edit.js"
-      }
-    ],
-    "shopping_view": [
-      {
-        "name": "shopping_view.js",
-        "publicPath": "/static/js/shopping_view.js",
-        "path": "/app/staticfiles/js/shopping_view.js"
-      }
-    ],
-    "meal_plan_view": [
-      {
-        "name": "meal_plan_view.js",
-        "publicPath": "/static/js/meal_plan_view.js",
-        "path": "/app/staticfiles/js/meal_plan_view.js"
-      }
-    ],
-    "recipe_list": [
-      {
-        "name": "recipe_list.js",
-        "publicPath": "/static/js/recipe_list.js",
-        "path": "/app/staticfiles/js/recipe_list.js"
-      }
-    ]
-  }
-}
+    )
+  );
+});
 EOF
-chown abc:abc /app/vue/webpack-stats.json
-chmod 644 /app/vue/webpack-stats.json
-echo "✓ webpack-stats.json created with comprehensive bundle support"
+
+chown -R abc:abc /app/cookbook/static/vue3
+chmod 644 /app/cookbook/static/vue3/manifest.json
+chmod 644 /app/cookbook/static/vue3/assets/main.js
+chmod 644 /app/cookbook/static/vue3/service-worker.js
+echo "✓ Vite manifest and service worker created for django-vite compatibility"
 
 echo "Starting Tandoor Recipes..."
 echo "Config: Django ${DJANGO_SETTINGS_MODULE:-recipes.settings}"
