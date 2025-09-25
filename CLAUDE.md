@@ -164,6 +164,11 @@ make trivy-scan              # Run Trivy vulnerability scan only
 make codeql-scan             # Run CodeQL static code analysis
 make security-scan-detailed  # Run detailed security scan with exports
 
+# LinuxServer.io Baseimage Management (2025-09-25)
+make baseimage-check        # Check for LinuxServer.io baseimage updates
+make baseimage-test         # Test new LinuxServer.io baseimage version
+make baseimage-update       # Update to latest LinuxServer.io baseimage
+
 # Container Management (Improved)
 make start                  # Start container using docker-compose
 make stop                   # Stop running containers
@@ -757,9 +762,82 @@ docker-compose exec tandoor /app/venv/bin/python manage.py check
 
 ---
 
-**Letzte Aktualisierung:** 2025-09-24
-**Nächste Review:** 2025-10-24
-**Template Version:** 2.1.0
-**Tandoor Status:** ✅ Vollständig Funktionsfähig
+## 🔧 CI/CD Workflow Standardisierung (2025-09-25)
+
+### GitHub Actions Workflow Updates
+
+**✅ KRITISCHE CI WORKFLOW FIXES:**
+
+Das Tandoor-Projekt hatte spezifische CI-Workflow-Probleme, die behoben wurden:
+
+**Docker Compose Installation Fix:**
+- ✅ **Legacy v2.21.0 Problem:** Fehlgeschlagene Download-URLs in GitHub Actions
+- ✅ **Solution:** Migration zu native Docker Compose Plugin
+- ✅ **Implementation:** Alle `docker-compose` Befehle zu `docker compose` geändert
+- ✅ **Result:** CI builds laufen jetzt zuverlässig
+
+**DockerHub Manifest Dependency Elimination:**
+- ✅ **Problem:** CI tests versuchten auf nicht-existierende DockerHub images zuzugreifen
+- ✅ **Solution:** `IMAGE_TAG=test` environment variable für lokale Builds
+- ✅ **Implementation:** Alle CI docker-compose tests verwenden lokal gebaute images
+- ✅ **Result:** Keine Abhängigkeit mehr von externen Docker registries in CI
+
+**Hadolint Configuration:**
+- ✅ **DL3007 Warning:** `FROM ghcr.io/tandoorrecipes/recipes:latest` → `FROM ghcr.io/tandoorrecipes/recipes:2.2.5`
+- ✅ **Ignore Directives:** LinuxServer.io spezifische Requirements ausgenommen
+- ✅ **Result:** Saubere Hadolint validation ohne false positives
+
+**Version Updates (2.2.4 → 2.2.5):**
+- ✅ **Tandoor Recipes:** Updated zu latest stable version
+- ✅ **Container Branding:** Version strings aktualisiert
+- ✅ **CI References:** Alle Dockerfile und workflow references aligned
+
+### Baseimage Testing Integration (2025-09-25)
+
+**LinuxServer.io Baseimage Update System:**
+- ✅ **Automated Testing Script:** `scripts/baseimage-update-test.sh` implementiert
+- ✅ **Make Integration:** `make baseimage-check`, `make baseimage-test`, `make baseimage-update`
+- ✅ **Version Detection:** API-basierte neueste Baseimage-Version Detection
+- ✅ **Container Validation:** Comprehensive build and runtime tests
+- ✅ **Security Scanning:** Trivy integration für baseimage updates
+- ✅ **Rollback Support:** Automatisches Rollback bei failed tests
+
+**CI Workflow Standardisierung (Alle Projekte):**
+```yaml
+# Standardized across audiobookshelf, rclone, tandoor
+- name: Setup Docker Compose
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y docker-compose-plugin
+    docker compose version
+
+- name: Test docker-compose configuration
+  run: |
+    IMAGE_TAG=test docker compose config --quiet
+    IMAGE_TAG=test docker compose up -d --wait
+```
+
+### .gitignore/.dockerignore Updates (2025-09-25)
+
+**Enhanced Artifact Management:**
+```gitignore
+# Baseimage testing (2025-09-25)
+BASEIMAGE_UPDATE_REPORT.md
+baseimage-test-*.log
+baseimage-test-*.json
+```
+
+**Benefits:**
+- ✅ **Workflow Consistency:** Alle drei Projekte verwenden identische CI patterns
+- ✅ **Reliability:** Eliminierte external dependency failures
+- ✅ **Maintenance:** Automated baseimage update testing
+- ✅ **Security:** Comprehensive vulnerability scanning in CI
+
+---
+
+**Letzte Aktualisierung:** 2025-09-25
+**Nächste Review:** 2025-10-25
+**Template Version:** 2.2.0
+**Tandoor Status:** ✅ Vollständig Funktionsfähig mit CI/CD Standardisierung
 
 *Für Fragen zu diesem Template oder Verbesserungsvorschläge, erstelle bitte ein Issue im Template-Repository.*

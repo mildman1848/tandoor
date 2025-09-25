@@ -22,22 +22,20 @@ services:
 
     # Environment configuration
     environment:
+      # LinuxServer.io base variables
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - TZ=${TZ:-Etc/UTC}
       - UMASK=${UMASK:-022}
 
       # Django configuration
-      - DEBUG=1
-      - SECRET_KEY=hTH03cCPgXRKT4x05Tb9chBuznlH2K4QOJqsTy00NftRmrugBmRdVil73clbgDU
+      - DEBUG=${DEBUG:-False}
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-recipes.settings}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
 
-      # Database configuration
-      - DB_ENGINE=${DB_ENGINE:-django.db.backends.postgresql}
-      - POSTGRES_HOST=${POSTGRES_HOST:-db_recipes}
-      - POSTGRES_DB=${POSTGRES_DB:-djangodb}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      # Database configuration (SQLite3 as default)
+      - DB_ENGINE=${DB_ENGINE:-django.db.backends.sqlite3}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////config/db.sqlite3}
 
       # Media and static files
       - STATIC_ROOT=${STATIC_ROOT:-/app/staticfiles}
@@ -49,14 +47,6 @@ services:
 
       # Optional: FILE__ prefix secrets support
       - FILE__SECRET_KEY=/run/secrets/tandoor_secret_key
-      - FILE__POSTGRES_PASSWORD=/run/secrets/tandoor_postgres_password
-      - FILE__POSTGRES_USER=/run/secrets/tandoor_postgres_user
-
-      # Direct secret values (temporary workaround for S6 environment issues)
-      - POSTGRES_PASSWORD=7wbl5QL8v912PADKREcSdgIayFNHRgBC
-      - POSTGRES_USER=djangouser
-
-      # Additional application configuration
 
     # Volume mounts
     volumes:
@@ -68,21 +58,14 @@ services:
     # Optional: Docker secrets support
     secrets:
       - tandoor_secret_key
-      - tandoor_postgres_password
-      - tandoor_postgres_user
 
     # Health check (process-based for security)
     healthcheck:
-      test: ["CMD", "sh", "-c", "ps aux | grep -v grep | grep tandoor || exit 1"]
+      test: ["CMD", "sh", "-c", "ps aux | grep -v grep | grep python || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
-    # Dependencies
-    depends_on:
-      db_recipes:
-        condition: service_healthy
 
     # Labels for better organization
     labels:
@@ -90,37 +73,10 @@ services:
       - "org.opencontainers.image.description=Tandoor Recipes - Recipe management server with S6 Overlay"
       - "org.opencontainers.image.vendor=Mildman1848"
 
-  # Database service
-  db_recipes:
-    image: postgres:16-alpine
-    container_name: tandoor_db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB:-djangodb}
-      # PostgreSQL secrets support (uses _FILE suffix exclusively)
-      # Note: Cannot use both POSTGRES_PASSWORD and POSTGRES_PASSWORD_FILE
-      - POSTGRES_PASSWORD_FILE=/run/secrets/tandoor_postgres_password
-      - POSTGRES_USER_FILE=/run/secrets/tandoor_postgres_user
-    volumes:
-      - ${DB_DATA_PATH:-./db}:/var/lib/postgresql/data
-    # Docker secrets support for PostgreSQL
-    secrets:
-      - tandoor_postgres_password
-      - tandoor_postgres_user
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d djangodb -U $(cat /run/secrets/tandoor_postgres_user)"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 # Docker secrets (optional)
 secrets:
   tandoor_secret_key:
     file: ${SECRETS_PATH:-./secrets}/tandoor_secret_key.txt
-  tandoor_postgres_password:
-    file: ${SECRETS_PATH:-./secrets}/tandoor_postgres_password.txt
-  tandoor_postgres_user:
-    file: ${SECRETS_PATH:-./secrets}/tandoor_postgres_user.txt
 
 # Networks (optional)
 networks:

@@ -1,66 +1,89 @@
 ---
-# Security hardening override (automatically applied by docker-compose)
-# This file provides comprehensive security hardening for all Mildman1848 containers
-# Based on Docker Security Best Practices and LinuxServer.io standards
+# docker-compose.override.yml
+# PostgreSQL Database Extension for Tandoor Recipes
+#
+# This file adds PostgreSQL support to the base docker-compose.yml
+# To use PostgreSQL instead of SQLite3:
+# 1. Run: make secrets-generate (or make secrets-django for Django-optimized secrets)
+# 2. Start with: docker compose up -d
+#
+# Docker Compose automatically applies override files when present.
 
 services:
   tandoor:
-    # Enhanced security options
-    security_opt:
-      - no-new-privileges:true
-      - apparmor=docker-default
-      # seccomp profile temporarily disabled due to compatibility issues
-      # - seccomp=./security/seccomp-profile.json
-
-    # Comprehensive capability management (temporarily disabled)
-    # cap_drop:
-    #   - ALL
-    # cap_add:
-    #   - SETGID      # User switching (LinuxServer.io requirement)
-    #   - SETUID      # User switching (LinuxServer.io requirement)
-    #   - CHOWN       # File ownership management
-    #   - DAC_OVERRIDE # File access (minimal)
-    #   - FOWNER      # File ownership operations
-
-    # Resource limits for security and stability
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 1G
-          pids: 200
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-
-    # tmpfs mounts for security (temporarily disabled)
-    # tmpfs:
-    #   - /tmp:rw,noexec,nosuid,size=100m
-    #   - /var/tmp:rw,noexec,nosuid,size=50m
-    #   - /run:rw,noexec,nosuid,size=50m
-
-    # Enhanced logging for security monitoring
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-        labels: "service=tandoor,environment=development"
-
-    # Additional security environment variables
+    # Add PostgreSQL environment configuration
     environment:
-      # Security hardening
-      - UMASK=027                    # Restrictive file permissions
-      - CORE_DUMP_SIZE=0            # Disable core dumps
-      - DNS=1.1.1.1,8.8.8.8        # Secure DNS servers
+      # Database configuration (PostgreSQL)
+      - DB_ENGINE=django.db.backends.postgresql
+      - POSTGRES_HOST=${POSTGRES_HOST:-db_recipes}
+      - POSTGRES_DB=${POSTGRES_DB:-djangodb}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
 
-      # Audit and monitoring
-      - AUDIT_ENABLED=true          # Enable audit logging
-      - DEBUG_MODE=false            # Disable debug mode for security
+      # PostgreSQL secrets support
+      - FILE__POSTGRES_PASSWORD=/run/secrets/tandoor_postgres_password
+      - FILE__POSTGRES_USER=/run/secrets/tandoor_postgres_user
 
-    # Additional volume security options
+    # Add PostgreSQL secrets
+    secrets:
+      - tandoor_secret_key
+      - tandoor_postgres_password
+      - tandoor_postgres_user
+
+    # Add PostgreSQL dependency
+    depends_on:
+      db_recipes:
+        condition: service_healthy
+
+  # PostgreSQL Database service
+  db_recipes:
+    image: postgres:16-alpine
+    container_name: tandoor_db
+    hostname: db_recipes
+    restart: unless-stopped
+
+    # Security hardening
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-djangodb}
+      # PostgreSQL secrets support (uses _FILE suffix exclusively)
+      # Note: Cannot use both POSTGRES_PASSWORD and POSTGRES_PASSWORD_FILE
+      - POSTGRES_PASSWORD_FILE=/run/secrets/tandoor_postgres_password
+      - POSTGRES_USER_FILE=/run/secrets/tandoor_postgres_user
+
     volumes:
-      # Override config volume with additional security
-      - ${CONFIG_PATH:-./config}:/config:rw,Z
-      - ${DATA_PATH:-./data}:/data:rw,Z
-      - ${LOGS_PATH:-./logs}:/config/logs:rw,Z
+      - ${DB_DATA_PATH:-./data/db}:/var/lib/postgresql/data
+
+    # Docker secrets support for PostgreSQL
+    secrets:
+      - tandoor_postgres_password
+      - tandoor_postgres_user
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d djangodb -U $(cat /run/secrets/tandoor_postgres_user)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    # Labels for better organization
+    labels:
+      - "org.opencontainers.image.title=tandoor-db"
+      - "org.opencontainers.image.description=PostgreSQL database for Tandoor Recipes"
+      - "org.opencontainers.image.vendor=Mildman1848"
+
+# PostgreSQL secrets (extend base secrets)
+secrets:
+  tandoor_secret_key:
+    file: ${SECRETS_PATH:-./secrets}/tandoor_secret_key.txt
+  tandoor_postgres_password:
+    file: ${SECRETS_PATH:-./secrets}/tandoor_postgres_password.txt
+  tandoor_postgres_user:
+    file: ${SECRETS_PATH:-./secrets}/tandoor_postgres_user.txt

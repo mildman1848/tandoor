@@ -6,7 +6,7 @@ DOCKER_REPO = mildman1848/tandoor
 VERSION ?= latest
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 VCS_REF := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-TANDOOR_VERSION ?= 2.2.5
+TANDOOR_VERSION ?= 2.2.6
 UPSTREAM_REPO = TandoorRecipes/recipes
 
 # Platform support for multi-architecture builds
@@ -15,7 +15,7 @@ PLATFORMS = linux/amd64,linux/arm64
 # Docker commands with error checking
 DOCKER = docker
 BUILDX = docker buildx
-COMPOSE = docker-compose
+COMPOSE = docker compose
 
 # Colors for output
 RED = \033[0;31m
@@ -171,18 +171,21 @@ validate-manifest: ## Validate OCI manifest compliance
 test: ## Test the Docker image
 	@echo "$(GREEN)Testing Docker image...$(NC)"
 	@echo "Creating test directories..."
-	@mkdir -p /tmp/tandoor-test-{config,data,logs}
+	@mkdir -p /tmp/claude/tandoor-test-{config,data,logs}
 	@echo "Starting container for testing..."
 	$(DOCKER) run -d \
 		--name tandoor-test \
 		--rm \
-		-p 1${EXTERNAL_PORT}:8080 \
-		-v /tmp/tandoor-test-config:/config \
-		-v /tmp/tandoor-test-data:/data \
-		-v /tmp/tandoor-test-logs:/config/logs \
+		-p 18080:8080 \
+		-v /tmp/claude/tandoor-test-config:/config \
+		-v /tmp/claude/tandoor-test-data:/data \
+		-v /tmp/claude/tandoor-test-logs:/config/logs \
 		-e PUID=$(shell id -u) \
 		-e PGID=$(shell id -g) \
-		--health-cmd="${HEALTH_CHECK_CMD}" \
+		-e DB_ENGINE=django.db.backends.sqlite3 \
+		-e DEBUG=1 \
+		-e SECRET_KEY=test-secret-key-for-testing-only \
+		--health-cmd="ps aux | grep -v grep | grep python || exit 1" \
 		--health-interval=15s \
 		--health-timeout=10s \
 		--health-retries=5 \
@@ -195,16 +198,16 @@ test: ## Test the Docker image
 		$(DOCKER) stop tandoor-test; \
 		exit 1)
 	@echo "$(GREEN)✓ Health check passed$(NC)"
-	@echo "Testing tandoor functionality..."
+	@echo "Testing Django application..."
 	@echo "Waiting for services to fully start..."
 	@sleep 10
-	@echo "Checking tandoor binary availability..."
-	@$(DOCKER) exec tandoor-test tandoor version >/dev/null || \
-		(echo "$(RED)✗ tandoor binary not accessible$(NC)"; \
+	@echo "Checking Django process..."
+	@$(DOCKER) exec tandoor-test ps aux | grep -v grep | grep python >/dev/null || \
+		(echo "$(RED)✗ Django process not running$(NC)"; \
 		$(DOCKER) logs tandoor-test; \
 		$(DOCKER) stop tandoor-test; \
 		exit 1)
-	@echo "$(GREEN)✓ tandoor binary is working$(NC)"
+	@echo "$(GREEN)✓ Django process is running$(NC)"
 	@echo "Verifying container is running correctly..."
 	@$(DOCKER) inspect tandoor-test >/dev/null || \
 		(echo "$(RED)✗ Container is not running$(NC)"; \
@@ -213,7 +216,7 @@ test: ## Test the Docker image
 	@echo "Stopping test container..."
 	@$(DOCKER) stop tandoor-test
 	@echo "Cleaning up test directories..."
-	@rm -rf /tmp/tandoor-test-*
+	@rm -rf /tmp/claude/tandoor-test-*
 	@echo "$(GREEN)All tests passed!$(NC)"
 
 ## Security and validation targets
@@ -309,12 +312,16 @@ clean-all: ## Remove all related Docker images and containers
 dev: ## Build and run for development
 	@echo "$(GREEN)Building and starting development container...$(NC)"
 	$(MAKE) build
+	@mkdir -p test-data/{config,data,logs}
 	$(DOCKER) run -it --rm \
 		--name tandoor-dev \
-		-p 1${EXTERNAL_PORT}:8080 \
+		-p 18080:8080 \
 		-v $(PWD)/test-data/config:/config \
 		-v $(PWD)/test-data/data:/data \
 		-v $(PWD)/test-data/logs:/config/logs \
+		-e DB_ENGINE=django.db.backends.sqlite3 \
+		-e DEBUG=1 \
+		-e SECRET_KEY=dev-secret-key-change-in-production \
 		$(DOCKER_REPO):$(VERSION)
 
 shell: ## Get shell access to running container
@@ -334,12 +341,12 @@ release: validate build test security-scan ## Complete release workflow
 secrets-generate: ## Generate secure secrets for tandoor
 	@echo "$(GREEN)Generating secure secrets for tandoor...$(NC)"
 	@mkdir -p secrets
-	@echo "Generating tandoor config password..."
-	@openssl rand -base64 32 | tr -d "=+/\n" | head -c 24 > secrets/tandoor_config_pass.txt
-	@echo "Generating tandoor API key..."
-	@openssl rand -base64 32 | tr -d "=+/\n" | head -c 32 > secrets/tandoor_api_key.txt
-	@echo "Generating tandoor JWT secret..."
-	@openssl rand -base64 48 | tr -d "=+/\n" | head -c 48 > secrets/tandoor_jwt_secret.txt
+	@echo "Generating Django SECRET_KEY..."
+	@python3 -c "import secrets; print(secrets.token_urlsafe(64))" > secrets/tandoor_secret_key.txt 2>/dev/null || \
+		openssl rand -base64 64 | tr -d "=+/\n" | head -c 64 > secrets/tandoor_secret_key.txt
+	@echo "Generating PostgreSQL password..."
+	@openssl rand -base64 32 | tr -d "=+/\n" | head -c 32 > secrets/tandoor_postgres_password.txt
+	@echo "djangouser" > secrets/tandoor_postgres_user.txt
 	@chmod 600 secrets/tandoor_*.txt
 	@chown $(shell id -u):$(shell id -g) secrets/tandoor_*.txt 2>/dev/null || true
 	@echo "$(GREEN)✓ tandoor secrets generated successfully!$(NC)"

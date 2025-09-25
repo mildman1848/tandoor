@@ -28,7 +28,8 @@ jobs:
         uses: hadolint/hadolint-action@v3.2.0
         with:
           dockerfile: Dockerfile
-          failure-threshold: error
+          failure-threshold: warning
+          ignore: DL3007,DL3018,DL3013
 
       - name: Validate docker-compose.yml
         run: |
@@ -80,8 +81,8 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test-${{ github.sha }}
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=1.5.20
-            PROJECT_VERSION=$(cat VERSION || echo "1.5.20-automation.1")
+            TANDOOR_VERSION=2.2.6
+            PROJECT_VERSION=$(cat VERSION || echo "2.2.6-automation.1")
 
   integration-test:
     name: Integration Tests
@@ -105,7 +106,7 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test
             VCS_REF=${{ github.sha }}
-            PROJECT_VERSION=$(cat VERSION || echo "1.5.20-automation.1")
+            PROJECT_VERSION=$(cat VERSION || echo "2.2.6-automation.1")
 
       - name: Create test environment
         run: |
