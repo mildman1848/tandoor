@@ -28,15 +28,13 @@ jobs:
         uses: hadolint/hadolint-action@v3.2.0
         with:
           dockerfile: Dockerfile
-          failure-threshold: warning
+          failure-threshold: error
 
       - name: Validate docker-compose.yml
         run: |
-          # Install docker-compose
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
-          docker-compose config -q
+          # Use docker compose (plugin version) - available by default in Ubuntu runners
+          docker compose --version
+          docker compose config -q
 
       - name: Check Makefile syntax
         run: |
@@ -223,12 +221,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Install docker-compose
+      - name: Check docker compose
         run: |
-          # Install docker-compose
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
+          # Use docker compose (plugin version) - available by default in Ubuntu runners
+          docker compose --version
 
       - name: Create test environment
         run: |
@@ -254,9 +250,9 @@ jobs:
         run: |
           docker build -t mildman1848/tandoor:test .
 
-      - name: Test docker-compose up
+      - name: Test docker compose up
         run: |
-          docker-compose up -d tandoor
+          docker compose up -d tandoor
 
       - name: Wait and test service
         run: |
@@ -265,15 +261,15 @@ jobs:
 
           # Test if service is responding
           curl -f http://localhost:18080/ || \
-          docker-compose exec -T tandoor curl -f http://localhost:8080/
+          docker compose exec -T tandoor curl -f http://localhost:8080/
 
       - name: Check logs
         if: always()
         run: |
           echo "=== Docker Compose logs ==="
-          docker-compose logs
+          docker compose logs
 
       - name: Cleanup
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
