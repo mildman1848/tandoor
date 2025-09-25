@@ -6,72 +6,50 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+    # Run comprehensive security scans weekly on Mondays at 6 AM UTC
+    - cron: '0 6 * * 1'
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
-  filesystem-scan:
-    name: Filesystem Security Scan
+  trivy-scan:
+    name: Trivy Vulnerability Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run Trivy vulnerability scanner in fs mode
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-fs-results.sarif'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-fs-results.sarif'
-
-      - name: Upload filesystem scan results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: filesystem-scan-results
-          path: trivy-fs-results.sarif
-
-  container-scan:
-    name: Container Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build image for scanning
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           load: true
-          tags: ${{ env.IMAGE_NAME }}:security-scan
+          tags: mildman1848/tandoor:scan
           cache-from: type=gha
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VERSION=security-scan
+            VCS_REF=${{ github.sha }}
+            TANDOOR_VERSION=2.2.6
+            PROJECT_VERSION=scan
 
-      - name: Run Trivy vulnerability scanner on image
+      - name: Run Trivy vulnerability scanner (SARIF)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.IMAGE_NAME }}:security-scan
-          format: 'json'
-          output: 'trivy-results.json'
-
-      - name: Run Trivy vulnerability scanner on image (SARIF)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.IMAGE_NAME }}:security-scan
+          image-ref: 'mildman1848/tandoor:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -79,118 +57,160 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Generate security summary
-        if: always()
-        run: |
-          if [ -f trivy-results.json ]; then
-            echo "## 🔍 Container Security Scan Results" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+      - name: Run Trivy vulnerability scanner (Table)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'mildman1848/tandoor:scan'
+          format: 'table'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          exit-code: '0'
 
-            CRITICAL=$(cat trivy-results.json | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length')
-            HIGH=$(cat trivy-results.json | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length')
-            MEDIUM=$(cat trivy-results.json | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length')
-            LOW=$(cat trivy-results.json | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length')
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
 
-            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| 🔴 Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟠 High | $HIGH |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟡 Medium | $MEDIUM |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟢 Low | $LOW |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-
-            if [ "$CRITICAL" -gt 0 ]; then
-              echo "⚠️ **WARNING: Critical vulnerabilities found!**" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "⚠️ Trivy scan results not found" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Upload security scan results
-        uses: actions/upload-artifact@v4
+      - name: Upload filesystem scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          name: security-scan-results
-          path: |
-            trivy-results.json
-            trivy-results.sarif
-
-  dependency-scan:
-    name: Dependency Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run dependency check
-        run: |
-          echo "## 📦 Dependency Security Check" >> $GITHUB_STEP_SUMMARY
-
-          # Check for common dependency files
-          if [ -f "package.json" ]; then
-            echo "- Found package.json (Node.js dependencies)" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ -f "requirements.txt" ]; then
-            echo "- Found requirements.txt (Python dependencies)" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ -f "Dockerfile" ]; then
-            echo "- Found Dockerfile (Container dependencies)" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Dependency scan completed" >> $GITHUB_STEP_SUMMARY
+          sarif_file: 'trivy-fs-results.sarif'
 
   secret-scan:
-    name: Secret Scanning
+    name: Secret Scan with TruffleHog
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: TruffleHog OSS
+      - name: Run TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
         with:
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
           path: ./
-          extra_args: --debug --only-verified --json --no-update
+          extra_args: --debug --only-verified
         continue-on-error: true
 
-  security-report:
-    name: Generate Security Report
+  dockerfile-scan:
+    name: Dockerfile Security Scan
     runs-on: ubuntu-latest
-    needs: [filesystem-scan, container-scan, dependency-scan, secret-scan]
-    if: always()
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Run Hadolint security scan
+        uses: hadolint/hadolint-action@v3.1.0
         with:
-          path: security-reports
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true
 
-      - name: Generate comprehensive security report
-        run: |
-          echo "# 🛡️ Security Scan Report" > SECURITY_REPORT.md
-          echo "" >> SECURITY_REPORT.md
-          echo "**Date:** $(date)" >> SECURITY_REPORT.md
-          echo "**Repository:** ${{ github.repository }}" >> SECURITY_REPORT.md
-          echo "**Commit:** ${{ github.sha }}" >> SECURITY_REPORT.md
-          echo "" >> SECURITY_REPORT.md
+      - name: Upload Hadolint scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: hadolint-results.sarif
 
-          echo "## Scan Summary" >> SECURITY_REPORT.md
-          echo "" >> SECURITY_REPORT.md
-          echo "- ✅ Filesystem Security Scan" >> SECURITY_REPORT.md
-          echo "- ✅ Container Security Scan" >> SECURITY_REPORT.md
-          echo "- ✅ Dependency Security Scan" >> SECURITY_REPORT.md
-          echo "- ✅ Secret Scanning" >> SECURITY_REPORT.md
-          echo "" >> SECURITY_REPORT.md
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-          echo "Detailed results are available in the artifacts section." >> SECURITY_REPORT.md
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: mildman1848/tandoor:scan
+          args: --severity-threshold=high --sarif-file-output=snyk-results.sarif
 
-      - name: Upload comprehensive security report
+      - name: Upload Snyk results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-results.sarif
+
+  # Optional: SBOM generation for dependency analysis
+  sbom-scan:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for SBOM
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: mildman1848/tandoor:sbom
+          cache-from: type=gha
+
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: mildman1848/tandoor:sbom
+          format: spdx-json
+          output-file: /tmp/sbom.spdx.json
+
+      - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: comprehensive-security-report
-          path: SECURITY_REPORT.md
+          name: sbom-spdx
+          path: /tmp/sbom.spdx.json
+          retention-days: 30
+
+  # Security summary job
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [trivy-scan, secret-scan, dockerfile-scan, sbom-scan]
+    if: always()
+    steps:
+      - name: Security scan summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Scan Type | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Vulnerability | ${{ needs.trivy-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scan | ${{ needs.secret-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dockerfile Security | ${{ needs.dockerfile-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SBOM Generation | ${{ needs.sbom-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Security Dashboard:** [View Results](https://github.com/${{ github.repository }}/security)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.trivy-scan.result }}" == "success" && "${{ needs.secret-scan.result }}" != "failure" ]]; then
+            echo "✅ **Overall Status:** Security scans completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Overall Status:** Some security scans need attention" >> $GITHUB_STEP_SUMMARY
+          fi

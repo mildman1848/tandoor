@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discord chat support
+    url: https://discord.gg/YWrKVTn
+    about: Ask for help with your setup in our community chat
+  - name: Discourse discussion forum
+    url: https://discourse.linuxserver.io
+    about: Ask questions and discuss ${APPLICATION_NAME} with the community
+  - name: Documentation
+    url: https://github.com/${GITHUB_USERNAME}/${APPLICATION_NAME}
+    about: Check our container information and documentation

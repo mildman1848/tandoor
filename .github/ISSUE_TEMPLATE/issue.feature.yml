@@ -1,0 +1,52 @@
+name: Feature Request
+description: Suggest an idea for this project
+title: "[FEAT] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature for ${APPLICATION_NAME}!
+
+        Before submitting, please make sure:
+        - [ ] You have searched existing issues and discussions
+        - [ ] This is a feature request, not a bug report
+        - [ ] You have considered if this belongs in the upstream project
+
+  - type: checkboxes
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the feature you want.
+      options:
+        - label: I have searched the existing issues
+          required: true
+
+  - type: textarea
+    attributes:
+      label: Feature Description
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Why is this change important to you? How would you use it? How can it benefit other users?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Possible Implementation
+      description: |
+        Not obligatory, but suggest an idea for implementing addition or change.
+        This can include code snippets, configuration examples, or architectural suggestions.
+      render: yaml
+
+  - type: textarea
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context about the feature request here.
+
+        Tip: You can attach images or files by clicking this area to highlight it and then dragging files in.

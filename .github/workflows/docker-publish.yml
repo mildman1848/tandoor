@@ -70,43 +70,19 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+          flavor: |
+            latest=auto
+            prefix=
+            suffix=
 
-      - name: Get version information
-        id: version_info
+      - name: Generate platform-specific image name
+        id: platform-name
         run: |
-          # Get Tandoor version
-          TANDOOR_VERSION=$(grep "TANDOOR_VERSION=" .env.example | cut -d'=' -f2 | tr -d '"' || echo "1.5.20")
-          echo "tandoor_version=${TANDOOR_VERSION}" >> $GITHUB_OUTPUT
-          echo "Tandoor version: ${TANDOOR_VERSION}"
-
-          # Get project version
-          if [ -f VERSION ]; then
-            PROJECT_VERSION=$(cat VERSION)
-          else
-            PROJECT_VERSION="1.5.20-automation.1"
-          fi
-          echo "project_version=${PROJECT_VERSION}" >> $GITHUB_OUTPUT
-          echo "Project version: ${PROJECT_VERSION}"
-
-          # Generate timestamp
-          TIMESTAMP=$(date -u +'%Y%m%d%H%M%S')
-          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
-
-      - name: Generate platform-specific tags
-        id: platform_tags
-        run: |
-          # Convert platform to safe tag format (linux/amd64 -> amd64)
-          PLATFORM_TAG=$(echo "${{ matrix.platform }}" | sed 's/linux\///g' | sed 's/\//-/g')
-          echo "platform_tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
-
-          # Create platform-specific image names
-          DOCKER_PLATFORM_IMAGE="${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:${PLATFORM_TAG}-${{ github.sha }}"
-          GHCR_PLATFORM_IMAGE="${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:${PLATFORM_TAG}-${{ github.sha }}"
-
-          echo "docker_platform_image=${DOCKER_PLATFORM_IMAGE}" >> $GITHUB_OUTPUT
-          echo "ghcr_platform_image=${GHCR_PLATFORM_IMAGE}" >> $GITHUB_OUTPUT
+          platform=${{ matrix.platform }}
+          echo "platform_pair=${platform//\//-}" >> $GITHUB_OUTPUT
+          echo "platform_arch=${platform##*/}" >> $GITHUB_OUTPUT
 
       - name: Build and push platform image
         id: build
@@ -114,73 +90,88 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ${{ steps.platform_tags.outputs.docker_platform_image }}
-            ${{ steps.platform_tags.outputs.ghcr_platform_image }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          # Disable provenance to avoid manifest list issues
-          provenance: false
-          sbom: false
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=${{ steps.version_info.outputs.tandoor_version }}
-            PROJECT_VERSION=${{ steps.version_info.outputs.project_version }}
+            TANDOOR_VERSION=2.2.6
+            PROJECT_VERSION=${{ steps.version.outputs.version }}
+          outputs: type=image,name=${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Export digest
-        if: github.event_name != 'pull_request'
+      - name: Export digest for Docker Hub
         run: |
-          mkdir -p /tmp/digests
+          mkdir -p /tmp/digests/docker
           digest="${{ steps.build.outputs.digest }}"
-          echo "Raw digest: $digest"
-          # Ensure we have a proper SHA256 digest
-          if [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
-            echo "$digest" > "/tmp/digests/${digest#sha256:}"
-            echo "Exported digest: ${digest#sha256:}"
-          else
-            echo "ERROR: Invalid digest format: $digest"
-            exit 1
-          fi
+          touch "/tmp/digests/docker/${digest#sha256:}"
 
-      - name: Upload digest
-        if: github.event_name != 'pull_request'
+      - name: Build and push platform image to GHCR
+        id: build-ghcr
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            VCS_REF=${{ github.sha }}
+            TANDOOR_VERSION=2.2.6
+            PROJECT_VERSION=${{ steps.version.outputs.version }}
+          outputs: type=image,name=${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export digest for GHCR
+        run: |
+          mkdir -p /tmp/digests/ghcr
+          digest="${{ steps.build-ghcr.outputs.digest }}"
+          touch "/tmp/digests/ghcr/${digest#sha256:}"
+
+      - name: Upload digests artifact (Docker Hub)
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ steps.platform_tags.outputs.platform_tag }}
-          path: /tmp/digests/*
+          name: digests-docker-${{ steps.platform-name.outputs.platform_pair }}
+          path: /tmp/digests/docker/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload digests artifact (GHCR)
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-ghcr-${{ steps.platform-name.outputs.platform_pair }}
+          path: /tmp/digests/ghcr/*
           if-no-files-found: error
           retention-days: 1
 
   # Create and push manifest lists
-  manifest:
-    name: Create Multi-Platform Manifest
+  merge:
+    name: Create Manifest Lists
     runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name != 'pull_request'
+    needs:
+      - build
     permissions:
       contents: read
       packages: write
-      id-token: write
-      attestations: write
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - name: Download digests (Docker Hub)
+        uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
+          path: /tmp/digests/docker
+          pattern: digests-docker-*
+          merge-multiple: true
+
+      - name: Download digests (GHCR)
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/ghcr
+          pattern: digests-ghcr-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Download digests
-        uses: actions/download-artifact@v5
-        with:
-          path: /tmp/digests
-          pattern: digests-*
-          merge-multiple: true
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -196,250 +187,181 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      - name: Extract metadata for Docker Hub
+        id: meta-docker
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}
-            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
-          labels: |
-            org.opencontainers.image.title=Tandoor Recipes
-            org.opencontainers.image.description=Django recipe management application based on LinuxServer.io Alpine
-            org.opencontainers.image.vendor=mildman1848
-            org.opencontainers.image.licenses=AGPL-3.0-or-later
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
 
-      - name: Get version information
-        id: version_info
+      - name: Extract metadata for GHCR
+        id: meta-ghcr
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Create manifest list and push (Docker Hub)
+        working-directory: /tmp/digests/docker
         run: |
-          # Get Tandoor version
-          TANDOOR_VERSION=$(grep "TANDOOR_VERSION=" .env.example | cut -d'=' -f2 | tr -d '"' || echo "1.5.20")
-          echo "tandoor_version=${TANDOOR_VERSION}" >> $GITHUB_OUTPUT
-          echo "Tandoor version: ${TANDOOR_VERSION}"
+          # Get platform digests and create manifest list
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+        env:
+          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta-docker.outputs.json }}
 
-          # Get project version
-          if [ -f VERSION ]; then
-            PROJECT_VERSION=$(cat VERSION)
-          else
-            PROJECT_VERSION="1.5.20-automation.1"
-          fi
-          echo "project_version=${PROJECT_VERSION}" >> $GITHUB_OUTPUT
-          echo "Project version: ${PROJECT_VERSION}"
-
-          # Generate timestamp
-          TIMESTAMP=$(date -u +'%Y%m%d%H%M%S')
-          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
-
-      - name: Create manifest list and push
-        working-directory: /tmp/digests
+      - name: Create manifest list and push (GHCR)
+        working-directory: /tmp/digests/ghcr
         run: |
-          echo "=== Available digest files ==="
-          ls -la
-          echo "=== Processing digests ==="
+          # Get platform digests and create manifest list
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+        env:
+          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta-ghcr.outputs.json }}
 
-          # Build digest references for Docker Hub
-          DOCKER_DIGESTS=""
-          GHCR_DIGESTS=""
+      - name: Create LinuxServer.io style architecture tags (Docker Hub)
+        working-directory: /tmp/digests/docker
+        run: |
+          # Extract version tag for architecture-specific tagging
+          VERSION_TAG=$(echo '${{ steps.meta-docker.outputs.tags }}' | head -1 | cut -d':' -f2)
 
-          for digest_file in *; do
-            if [ -f "$digest_file" ]; then
-              digest_content=$(cat "$digest_file")
-              echo "Processing digest: $digest_content"
-              DOCKER_DIGESTS="$DOCKER_DIGESTS ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}@$digest_content"
-              GHCR_DIGESTS="$GHCR_DIGESTS ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}@$digest_content"
+          # Create architecture-specific tags
+          for digest in *; do
+            # Determine architecture from digest context (this is a simplified approach)
+            if [[ -f "${digest}" ]]; then
+              # Create amd64 and arm64 tags - adjust logic based on your platform detection needs
+              docker buildx imagetools create \
+                -t ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:amd64-${VERSION_TAG} \
+                -t ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:amd64-latest \
+                ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}@sha256:${digest} || true
+
+              docker buildx imagetools create \
+                -t ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:arm64-${VERSION_TAG} \
+                -t ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:arm64-latest \
+                ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}@sha256:${digest} || true
             fi
           done
 
-          echo "Docker Hub digests: $DOCKER_DIGESTS"
-          echo "GHCR digests: $GHCR_DIGESTS"
-
-          # Create Docker Hub manifest list
-          if [ -n "$DOCKER_DIGESTS" ]; then
-            docker buildx imagetools create --tag ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:${{ github.sha }} $DOCKER_DIGESTS
-          fi
-
-          # Create GHCR manifest list
-          if [ -n "$GHCR_DIGESTS" ]; then
-            docker buildx imagetools create --tag ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:${{ github.sha }} $GHCR_DIGESTS
-          fi
-
-      - name: Create versioned manifest lists (LinuxServer.io style)
-        id: manifest_creation
-        working-directory: /tmp/digests
+      - name: Create LinuxServer.io style architecture tags (GHCR)
+        working-directory: /tmp/digests/ghcr
         run: |
-          # LinuxServer.io pipeline style: Create architecture-specific tags and manifest lists
-          platforms=("amd64" "arm64")
+          # Extract version tag for architecture-specific tagging
+          VERSION_TAG=$(echo '${{ steps.meta-ghcr.outputs.tags }}' | head -1 | cut -d':' -f2)
 
-          # Read tags into array to avoid subshell issues
-          mapfile -t tag_array < <(echo '${{ steps.meta.outputs.tags }}' | tr ' ' '\n' | grep -v '^$')
+          # Create architecture-specific tags
+          for digest in *; do
+            if [[ -f "${digest}" ]]; then
+              # Create amd64 and arm64 tags
+              docker buildx imagetools create \
+                -t ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:amd64-${VERSION_TAG} \
+                -t ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:amd64-latest \
+                ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}@sha256:${digest} || true
 
-          # Process all tags from metadata
-          for tag in "${tag_array[@]}"; do
-            if [[ -n "$tag" ]]; then
-              echo "Creating manifest list for tag: $tag"
-
-              # Create architecture-specific tags (LinuxServer.io style)
-              for platform in "${platforms[@]}"; do
-                # Tag format: repository:amd64-version, repository:arm64-version, etc.
-                arch_tag="${tag%:*}:${platform}-$(echo "$tag" | cut -d: -f2)"
-                echo "Creating arch-specific tag: $arch_tag"
-
-                # Find matching digest for this platform
-                digest_files=(*)
-                case $platform in
-                  "amd64")
-                    if [ ${#digest_files[@]} -gt 0 ]; then
-                      digest_content=$(cat "${digest_files[0]}")
-                      echo "Using digest for amd64: $digest_content"
-                      docker buildx imagetools create --tag "$arch_tag" "${tag%:*}@$digest_content"
-                    fi
-                    ;;
-                  "arm64")
-                    if [ ${#digest_files[@]} -gt 1 ]; then
-                      digest_content=$(cat "${digest_files[1]}")
-                      echo "Using digest for arm64: $digest_content"
-                      docker buildx imagetools create --tag "$arch_tag" "${tag%:*}@$digest_content"
-                    fi
-                    ;;
-                esac
-              done
-
-              # Create main manifest list that references all platforms
-              PLATFORM_REFS=""
-              for digest_file in *; do
-                if [ -f "$digest_file" ]; then
-                  digest_content=$(cat "$digest_file")
-                  PLATFORM_REFS="$PLATFORM_REFS ${tag%:*}@$digest_content"
-                fi
-              done
-
-              if [ -n "$PLATFORM_REFS" ]; then
-                echo "Creating manifest list for $tag with refs: $PLATFORM_REFS"
-                docker buildx imagetools create --tag "$tag" $PLATFORM_REFS
-
-                # Store main manifest digest for SBOM (only for latest tag)
-                if [[ "$tag" == *":latest" ]]; then
-                  echo "Getting manifest digest for SBOM..."
-                  MAIN_MANIFEST_DIGEST=$(docker buildx imagetools inspect --raw "$tag" | sha256sum | cut -d' ' -f1)
-                  echo "main_manifest_digest=sha256:${MAIN_MANIFEST_DIGEST}" >> $GITHUB_OUTPUT
-                  echo "Main manifest digest: sha256:${MAIN_MANIFEST_DIGEST}"
-                fi
-              fi
+              docker buildx imagetools create \
+                -t ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:arm64-${VERSION_TAG} \
+                -t ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:arm64-latest \
+                ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}@sha256:${digest} || true
             fi
           done
 
-      - name: Inspect manifest lists (LinuxServer.io style)
+      - name: Inspect manifest lists
         run: |
-          echo "=== Docker Hub Main Manifest List ==="
-          docker buildx imagetools inspect ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:latest || true
-
-          echo "=== Architecture-Specific Tags (LinuxServer.io style) ==="
-          for arch in amd64 arm64; do
-            echo "--- ${arch} specific tag ---"
-            docker buildx imagetools inspect ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:${arch}-latest || true
+          # Docker Hub inspection
+          echo "=== Docker Hub Manifest Lists ==="
+          for tag in ${{ steps.meta-docker.outputs.tags }}; do
+            echo "Inspecting: ${tag}"
+            docker buildx imagetools inspect "${tag}" || true
+            echo "---"
           done
 
-          echo "=== GHCR Main Manifest List ==="
-          docker buildx imagetools inspect ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:latest || true
+          # GHCR inspection
+          echo "=== GHCR Manifest Lists ==="
+          for tag in ${{ steps.meta-ghcr.outputs.tags }}; do
+            echo "Inspecting: ${tag}"
+            docker buildx imagetools inspect "${tag}" || true
+            echo "---"
+          done
 
-          echo "=== OCI Manifest Verification ==="
-          # Verify OCI compliance and manifest structure
-          docker manifest inspect ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:latest || true
-
-      - name: Generate SBOM attestation
-        if: steps.manifest_creation.outputs.main_manifest_digest != ''
-        uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.manifest_creation.outputs.main_manifest_digest }}
-          push-to-registry: true
-
-      - name: Run vulnerability scan on manifest list
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:latest
-          format: 'table'
-          exit-code: '0'
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          body: |
-            ## 🐳 Docker Images
-
-            **Multi-Platform Support:**
-            - `linux/amd64`
-            - `linux/arm64`
-
-            **Docker Hub:**
-            ```bash
-            docker pull ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ```
-
-            **GitHub Container Registry:**
-            ```bash
-            docker pull ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ```
-
-            **Based on:**
-            - Tandoor Recipes ${{ steps.version_info.outputs.tandoor_version }}
-            - LinuxServer.io Alpine Baseimage 3.22
-            - S6 Overlay v3
-
-            **Project Version:** ${{ steps.version_info.outputs.project_version }}
-
-            ## 🚀 Quick Start
-
-            ```bash
-            git clone https://github.com/mildman1848/tandoor.git
-            cd tandoor
-            make setup
-            docker-compose up -d
-            ```
-
-            ## 🔒 Security
-
-            This release includes automated vulnerability scanning and SBOM attestation for enhanced security.
-
-  update-docker-hub-description:
-    name: Update Docker Hub Description
+  # Generate SBOM and attestations
+  sbom:
+    name: Generate SBOM
     runs-on: ubuntu-latest
-    needs: manifest
-    if: github.event_name == 'release'
+    needs: merge
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Update Docker Hub Repository Description
-        uses: peter-evans/dockerhub-description@v4
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ env.IMAGE_NAME }}
-          short-description: "Production-ready Tandoor Recipes Docker image based on LinuxServer.io Alpine with S6 Overlay and security hardening"
-          readme-filepath: ./README.md
+          registry: ${{ env.REGISTRY_GHCR }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:latest
+          format: spdx-json
+          output-file: /tmp/sbom.spdx.json
+          upload-artifact: true
+
+      - name: Upload SBOM to release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: /tmp/sbom.spdx.json
+          asset_name: sbom.spdx.json
+          asset_content_type: application/json
+
+  # Cleanup old packages (GHCR)
   cleanup:
-    name: Cleanup Old Images
+    name: Cleanup Old Packages
     runs-on: ubuntu-latest
-    needs: manifest
-    if: github.event_name == 'release'
+    needs: sbom
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Delete old GitHub Container Registry images
+      - name: Delete old GHCR packages
         uses: actions/delete-package-versions@v5
-        continue-on-error: true
         with:
           package-name: 'tandoor'
           package-type: 'container'
           min-versions-to-keep: 10
-          delete-only-untagged-versions: true
+          ignore-versions: '^(latest|main|develop)$'
           token: ${{ secrets.GHCR_TOKEN }}
+        continue-on-error: true

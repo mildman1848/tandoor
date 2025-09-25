@@ -6,6 +6,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.6-1] - 2025-09-25
+### 🚀 Major Overhaul Release
+
+#### Added
+- **SQLite3 Default Database**: Lightweight default configuration requiring no additional setup
+- **PostgreSQL Override Support**: Automatic PostgreSQL integration via docker-compose.override.yml
+- **Enhanced Pre-Push Guidelines**: Comprehensive validation system preventing deployment issues
+- **Django-Optimized Secrets**: Specialized secret generation for Django applications
+
+#### Changed
+- **Version Update**: Tandoor Recipes v2.2.5 → v2.2.6 (latest upstream)
+- **Database Architecture**: SQLite3 as default, PostgreSQL moved to optional override
+- **CI/CD Modernization**: Migrated to docker compose plugin (from legacy docker-compose)
+- **Secrets Management**: Fixed generation to create files (not directories)
+- **Makefile Enhancement**: Updated all functions with proper variable definitions
+
+#### Fixed
+- **Test Environment Variables**: Removed hardcoded test values from production docker-compose.yml
+- **Secrets Creation**: Corrected FILE__ prefix implementation to generate actual files
+- **Docker Compose Commands**: Updated throughout CI workflows to use modern plugin syntax
+- **Version Consistency**: All references now consistently use v2.2.6
+
+#### Security
+- **Clean Configuration**: Production docker-compose.yml free of test secrets and debug settings
+- **Enhanced Secret Management**: Proper file-based secrets with correct permissions (600)
+- **CI/CD Security**: Eliminated external DockerHub dependencies in testing workflows
+
+#### Documentation
+- **CLAUDE.md Updated**: Comprehensive documentation of all changes and new patterns
+- **.env.example Cleaned**: Reflects SQLite3 defaults with PostgreSQL options commented
+- **Pre-Push Guidelines**: Enhanced with specific requirements for secrets and configuration
+
 ## [2.2.5-1] - 2025-09-25
 
 ### 🚀 Version Update

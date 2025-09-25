@@ -1,0 +1,22 @@
+name: Greetings
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/first-interaction@v1
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        issue-message: |
+          Thanks for opening your first issue here! Be sure to follow the relevant issue templates, or risk having this issue marked as invalid.
+        pr-message: |
+          Thanks for opening this pull request! Please check out our contributing guidelines and ensure your PR follows the template. We'll review it as soon as possible.

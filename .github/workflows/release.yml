@@ -4,369 +4,261 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release Version (e.g., 1.5.19)'
+        description: 'Release version (e.g., 1.0.0)'
         required: true
         type: string
-      release_type:
-        description: 'Release Type'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-      tandoor_version:
-        description: 'Tandoor Recipes Version (if different from release version)'
+      prerelease:
+        description: 'Is this a pre-release?'
         required: false
-        type: string
-      dry_run:
-        description: 'Dry Run (test without creating release)'
+        default: false
+        type: boolean
+      draft:
+        description: 'Create as draft release?'
         required: false
         default: false
         type: boolean
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
   validate:
     name: Validate Release
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.validate.outputs.version }}
-      tandoor_version: ${{ steps.validate.outputs.tandoor_version }}
-      tag: ${{ steps.validate.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Validate inputs and generate versions
-        id: validate
+      - name: Validate version format
+        id: version
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-          TANDOOR_VERSION="${{ github.event.inputs.tandoor_version }}"
-
-          # Use release version as Tandoor version if not specified
-          if [ -z "$TANDOOR_VERSION" ]; then
-            TANDOOR_VERSION="$VERSION"
-          fi
-
-          # Validate version format
-          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
-            echo "❌ Invalid version format: $VERSION"
+          version="${{ github.event.inputs.version }}"
+          if [[ ! $version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$ ]]; then
+            echo "❌ Invalid version format: $version"
             echo "Expected format: X.Y.Z or X.Y.Z-suffix"
             exit 1
           fi
-
-          TAG="v$VERSION"
-
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tandoor_version=$TANDOOR_VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
-          echo "✅ Release validation passed"
-          echo "  Release Version: $VERSION"
-          echo "  Tandoor Version: $TANDOOR_VERSION"
-          echo "  Git Tag: $TAG"
+          echo "✅ Version format valid: $version"
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Check if tag exists
         run: |
-          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.validate.outputs.tag }}$"; then
-            echo "❌ Tag ${{ steps.validate.outputs.tag }} already exists!"
+          version="${{ steps.version.outputs.version }}"
+          if git rev-parse "v$version" >/dev/null 2>&1; then
+            echo "❌ Tag v$version already exists"
             exit 1
           fi
-          echo "✅ Tag ${{ steps.validate.outputs.tag }} is available"
+          echo "✅ Tag v$version is available"
 
-  prepare:
-    name: Prepare Release
-    runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Update VERSION file
+      - name: Extract changelog
+        id: changelog
         run: |
-          echo "${{ needs.validate.outputs.version }}" > VERSION
-          echo "✅ Updated VERSION file to ${{ needs.validate.outputs.version }}"
-
-      - name: Update Dockerfile with Tandoor version
-        run: |
-          sed -i 's/ARG TANDOOR_VERSION="[^"]*"/ARG TANDOOR_VERSION="${{ needs.validate.outputs.tandoor_version }}"/' Dockerfile
-          echo "✅ Updated Dockerfile TANDOOR_VERSION to ${{ needs.validate.outputs.tandoor_version }}"
-
-      - name: Generate CHANGELOG entry
-        run: |
-          TODAY=$(date +%Y-%m-%d)
-          CHANGELOG_ENTRY="## [${{ needs.validate.outputs.version }}] - $TODAY
-
-          ### 🚀 Release Highlights
-          - Updated to Tandoor Recipes ${{ needs.validate.outputs.tandoor_version }}
-          - LinuxServer.io Alpine base image with S6 Overlay v3
-          - Enhanced security and performance optimizations
-
-          ### 📦 Changes
-          - Tandoor Recipes: ${{ needs.validate.outputs.tandoor_version }}
-          - Container optimizations and security improvements
-          - Updated dependencies and security patches
-
-          ### 🔧 Technical Details
-          - **Base Image:** LinuxServer.io Alpine 3.22
-          - **Multi-Architecture:** AMD64, ARM64 support
-          - **Security:** Enhanced container hardening
-          - **Performance:** Optimized Python dependencies and caching
-
-          ### 📖 Documentation
-          - Updated README with latest configuration options
-          - Enhanced security documentation
-          - Improved deployment examples
-
-          ---"
-
-          # Prepend to existing CHANGELOG
-          if [ -f CHANGELOG.md ]; then
-            echo "$CHANGELOG_ENTRY" > CHANGELOG.new.md
-            echo "" >> CHANGELOG.new.md
-            tail -n +1 CHANGELOG.md >> CHANGELOG.new.md
-            mv CHANGELOG.new.md CHANGELOG.md
+          version="${{ steps.version.outputs.version }}"
+          if [[ -f "CHANGELOG.md" ]]; then
+            # Extract changelog section for this version
+            changelog=$(awk "/^## \[?$version\]?/ {flag=1; next} /^## / && flag {exit} flag" CHANGELOG.md)
+            if [[ -n "$changelog" ]]; then
+              echo "✅ Found changelog for version $version"
+              # Save changelog to output (properly escaped)
+              {
+                echo 'changelog<<EOF'
+                echo "$changelog"
+                echo 'EOF'
+              } >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ No changelog found for version $version, using generic message"
+              echo "changelog=Release $version" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "# Changelog" > CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            echo "$CHANGELOG_ENTRY" >> CHANGELOG.md
+            echo "⚠️ No CHANGELOG.md found, using generic message"
+            echo "changelog=Release $version" >> $GITHUB_OUTPUT
           fi
 
-          echo "✅ Updated CHANGELOG.md"
-
-      - name: Commit version updates
-        if: ${{ !github.event.inputs.dry_run }}
+      - name: Run pre-release tests
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          echo "Running pre-release validation..."
 
-          git add VERSION Dockerfile CHANGELOG.md
-          git commit -m "🔖 Release ${{ needs.validate.outputs.version }}
-
-          - Update VERSION to ${{ needs.validate.outputs.version }}
-          - Update Tandoor Recipes to ${{ needs.validate.outputs.tandoor_version }}
-          - Update CHANGELOG.md with release notes
-
-          🤖 Generated with [Claude Code](https://claude.ai/code)
-
-          Co-Authored-By: Claude <noreply@anthropic.com>"
-
-          git push origin main
-          echo "✅ Committed and pushed version updates"
-
-      - name: Show dry run changes
-        if: ${{ github.event.inputs.dry_run }}
-        run: |
-          echo "🧪 DRY RUN - Changes that would be made:"
-          echo ""
-          echo "VERSION file:"
-          cat VERSION
-          echo ""
-          echo "Dockerfile TANDOOR_VERSION:"
-          grep "ARG TANDOOR_VERSION=" Dockerfile
-          echo ""
-          echo "CHANGELOG.md (first 20 lines):"
-          head -20 CHANGELOG.md
-
-  build-test:
-    name: Build and Test
-    runs-on: ubuntu-latest
-    needs: [validate, prepare]
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        if: ${{ !github.event.inputs.dry_run }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        if: ${{ !github.event.inputs.dry_run }}
-
-      - name: Build test image
-        uses: docker/build-push-action@v5
-        if: ${{ !github.event.inputs.dry_run }}
-        with:
-          context: .
-          platforms: linux/${{ matrix.platform }}
-          push: false
-          tags: ${{ env.IMAGE_NAME }}:test-${{ matrix.platform }}
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
-          build-args: |
-            VERSION=${{ needs.validate.outputs.version }}
-            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=${{ needs.validate.outputs.tandoor_version }}
-
-      - name: Test container functionality
-        if: ${{ !github.event.inputs.dry_run && matrix.platform == 'amd64' }}
-        run: |
-          # Load and test the built image
-          docker buildx build --load --platform linux/amd64 -t ${{ env.IMAGE_NAME }}:test .
-
-          # Run basic functionality test
-          docker run -d --name test-container \
-            -e PUID=911 -e PGID=911 -e TZ=UTC \
-            ${{ env.IMAGE_NAME }}:test
-
-          # Wait for container to start
-          sleep 30
-
-          # Check if container is running and healthy
-          if docker ps | grep -q test-container; then
-            echo "✅ Container started successfully"
+          # Build and test container
+          if command -v make >/dev/null 2>&1; then
+            make build || exit 1
+            make test || exit 1
           else
-            echo "❌ Container failed to start"
-            docker logs test-container
-            exit 1
+            echo "⚠️ Make not available, skipping build tests"
           fi
 
-          # Cleanup
-          docker stop test-container
-          docker rm test-container
+          # Validate docker-compose configuration
+          docker compose config --quiet || exit 1
 
-      - name: Show build dry run
-        if: ${{ github.event.inputs.dry_run }}
-        run: |
-          echo "🧪 DRY RUN - Build would use:"
-          echo "  Platform: ${{ matrix.platform }}"
-          echo "  Version: ${{ needs.validate.outputs.version }}"
-          echo "  Tandoor Version: ${{ needs.validate.outputs.tandoor_version }}"
+          echo "✅ Pre-release validation completed"
 
   create-release:
-    name: Create GitHub Release
+    name: Create Release
     runs-on: ubuntu-latest
-    needs: [validate, prepare, build-test]
-    if: ${{ !github.event.inputs.dry_run }}
+    needs: validate
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create.outputs.id }}
+      upload_url: ${{ steps.create.outputs.upload_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Create Git Tag
+      - name: Create Git tag
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-          git tag -a "${{ needs.validate.outputs.tag }}" -m "Release ${{ needs.validate.outputs.version }}"
-          git push origin "${{ needs.validate.outputs.tag }}"
-          echo "✅ Created and pushed tag ${{ needs.validate.outputs.tag }}"
-
-      - name: Generate release notes
-        id: release_notes
-        run: |
-          RELEASE_NOTES="## 🍴 Tandoor Recipes ${{ needs.validate.outputs.version }}
-
-          Self-hosted recipe management with enhanced LinuxServer.io compliance and security.
-
-          ### 🎯 Key Features
-          - **Tandoor Recipes:** ${{ needs.validate.outputs.tandoor_version }}
-          - **Multi-Architecture:** Native AMD64 and ARM64 support
-          - **Security:** Enhanced container hardening with S6 Overlay v3
-          - **LinuxServer.io Compliant:** Full FILE__ secrets and Docker Mods support
-
-          ### 🚀 Quick Start
-          \`\`\`bash
-          docker run -d \\
-            --name tandoor \\
-            -p 8080:8080 \\
-            -v /path/to/config:/config \\
-            -v /path/to/data:/data \\
-            -e PUID=1000 \\
-            -e PGID=1000 \\
-            -e TZ=Europe/London \\
-            ghcr.io/${{ github.repository }}:${{ needs.validate.outputs.version }}
-          \`\`\`
-
-          ### 📦 Container Images
-          - \`ghcr.io/${{ github.repository }}:${{ needs.validate.outputs.version }}\`
-          - \`ghcr.io/${{ github.repository }}:latest\`
-
-          ### 🏗️ Architecture Support
-          - \`linux/amd64\`
-          - \`linux/arm64\`
-
-          ### 📚 Documentation
-          - [README](https://github.com/${{ github.repository }}/blob/main/README.md)
-          - [Security Policy](https://github.com/${{ github.repository }}/blob/main/SECURITY.md)
-          - [LinuxServer.io Documentation](https://github.com/${{ github.repository }}/blob/main/LINUXSERVER.md)
-
-          ### 🔗 Links
-          - [Tandoor Recipes](https://github.com/TandoorRecipes/recipes)
-          - [LinuxServer.io](https://www.linuxserver.io/)
-          - [Docker Hub](https://hub.docker.com/r/${{ github.repository_owner }}/tandoor)
-
-          **Full Changelog:** [View Changes](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)"
-
-          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          version="${{ needs.validate.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$version" -m "Release v$version"
+          git push origin "v$version"
 
       - name: Create GitHub Release
+        id: create
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ needs.validate.outputs.tag }}
-          release_name: "Tandoor Recipes ${{ needs.validate.outputs.version }}"
-          body: ${{ steps.release_notes.outputs.release_notes }}
-          draft: false
-          prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+          tag_name: v${{ needs.validate.outputs.version }}
+          release_name: tandoor v${{ needs.validate.outputs.version }}
+          body: |
+            # tandoor v${{ needs.validate.outputs.version }}
+
+            ## Changes
+            ${{ needs.validate.outputs.changelog }}
+
+            ## Container Images
+
+            **Docker Hub:**
+            ```bash
+            docker pull mildman1848/tandoor:${{ needs.validate.outputs.version }}
+            docker pull mildman1848/tandoor:latest
+            ```
+
+            **GitHub Container Registry:**
+            ```bash
+            docker pull ghcr.io/mildman1848/tandoor:${{ needs.validate.outputs.version }}
+            docker pull ghcr.io/mildman1848/tandoor:latest
+            ```
+
+            ## Architecture Support
+            - ✅ AMD64 (Intel/AMD 64-bit)
+            - ✅ ARM64 (Apple Silicon, ARM64 servers)
+
+            ## Quick Start
+            ```bash
+            # Download docker-compose.yml
+            wget https://raw.githubusercontent.com/mildman1848/tandoor/v${{ needs.validate.outputs.version }}/docker-compose.yml
+
+            # Copy configuration template
+            cp .env.example .env
+
+            # Edit configuration (set PUID/PGID, ports, etc.)
+            nano .env
+
+            # Start container
+            docker-compose up -d
+            ```
+
+            ## Verification
+            - **Container Image:** `docker buildx imagetools inspect mildman1848/tandoor:${{ needs.validate.outputs.version }}`
+            - **SBOM:** Available as release asset
+            - **Security:** Scanned with Trivy, CodeQL, and TruffleHog
+
+            ---
+            **Full Documentation:** [README.md](https://github.com/mildman1848/tandoor/blob/v${{ needs.validate.outputs.version }}/README.md)
+
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+          draft: ${{ github.event.inputs.draft == 'true' }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
 
   trigger-docker-build:
     name: Trigger Docker Build
     runs-on: ubuntu-latest
     needs: [validate, create-release]
-    if: ${{ !github.event.inputs.dry_run }}
     steps:
       - name: Trigger Docker Build & Publish workflow
-        run: |
-          gh workflow run docker-publish.yml
-          echo "✅ Triggered Docker Build & Publish workflow"
-          echo "🔗 Monitor progress: https://github.com/${{ github.repository }}/actions/workflows/docker-publish.yml"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: workflow } = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'docker-publish.yml',
+              ref: 'main',
+              inputs: {
+                tag: '${{ needs.validate.outputs.version }}'
+              }
+            });
+            console.log('✅ Triggered Docker Build & Publish workflow');
 
-  summary:
+      - name: Wait for Docker build completion
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Wait for docker build to complete (with timeout)
+            const maxWaitTime = 30 * 60 * 1000; // 30 minutes
+            const startTime = Date.now();
+
+            while (Date.now() - startTime < maxWaitTime) {
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'docker-publish.yml',
+                per_page: 5
+              });
+
+              const recentRun = runs.workflow_runs.find(run =>
+                run.created_at > new Date(Date.now() - 10 * 60 * 1000).toISOString()
+              );
+
+              if (recentRun) {
+                if (recentRun.status === 'completed') {
+                  if (recentRun.conclusion === 'success') {
+                    console.log('✅ Docker build completed successfully');
+                    return;
+                  } else {
+                    throw new Error('❌ Docker build failed');
+                  }
+                }
+              }
+
+              console.log('🔄 Waiting for Docker build to complete...');
+              await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+            }
+
+            throw new Error('⏰ Docker build timeout');
+
+  release-summary:
     name: Release Summary
     runs-on: ubuntu-latest
-    needs: [validate, prepare, build-test, create-release, trigger-docker-build]
+    needs: [validate, create-release, trigger-docker-build]
     if: always()
     steps:
-      - name: Generate release summary
+      - name: Release Summary
         run: |
           echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "### 🧪 DRY RUN COMPLETED" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**No actual release was created.**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "**Release Version:** ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Tandoor Version:** ${{ needs.validate.outputs.tandoor_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Git Tag:** ${{ needs.validate.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Release Type:** ${{ github.event.inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Validation | ${{ needs.validate.result }} | Version format, tests, configuration |" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub Release | ${{ needs.create-release.result }} | Tag creation and release notes |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Images | ${{ needs.trigger-docker-build.result }} | Multi-platform container builds |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
-            echo "### ✅ Completed Steps" >> $GITHUB_STEP_SUMMARY
-            echo "- Version validation and preparation" >> $GITHUB_STEP_SUMMARY
-            echo "- Multi-architecture container builds" >> $GITHUB_STEP_SUMMARY
-            echo "- Container functionality testing" >> $GITHUB_STEP_SUMMARY
-            echo "- GitHub release creation" >> $GITHUB_STEP_SUMMARY
-            echo "- Docker build workflow trigger" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.create-release.result }}" == "success" ]]; then
+            echo "🔗 **Release:** [tandoor v${{ needs.validate.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }})" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 🔗 Next Steps" >> $GITHUB_STEP_SUMMARY
-            echo "- Monitor [Docker Build workflow](https://github.com/${{ github.repository }}/actions/workflows/docker-publish.yml)" >> $GITHUB_STEP_SUMMARY
-            echo "- Verify container images are published" >> $GITHUB_STEP_SUMMARY
-            echo "- Update deployment documentation if needed" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Container Images:**" >> $GITHUB_STEP_SUMMARY
+            echo "- \`mildman1848/tandoor:${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`ghcr.io/mildman1848/tandoor:${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Release creation failed - check logs above**" >> $GITHUB_STEP_SUMMARY
           fi

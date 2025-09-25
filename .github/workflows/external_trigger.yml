@@ -1,0 +1,18 @@
+name: External Trigger Main
+
+on:
+  workflow_dispatch:
+
+jobs:
+  external-trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: External Trigger
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Trigger build pipeline"
+          echo "Repository: tandoor"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "This would trigger the main build process"

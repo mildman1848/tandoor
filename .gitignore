@@ -379,6 +379,7 @@ config/
 data/
 db/
 security/
+!security/seccomp-profile.json
 security-reports/
 
 # Baseimage testing (2025-09-25)

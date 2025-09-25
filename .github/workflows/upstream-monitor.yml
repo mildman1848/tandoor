@@ -1,222 +1,337 @@
-name: Upstream Monitor
+name: Upstream Monitoring
 
 on:
   schedule:
-    - cron: '0 6 * * 1,4'  # Monday and Thursday at 6 AM UTC
+    # Run Monday and Thursday at 6 AM UTC
+    - cron: '0 6 * * 1,4'
   workflow_dispatch:
+    inputs:
+      force_check:
+        description: 'Force check even if recent issue exists'
+        required: false
+        default: false
+        type: boolean
 
 env:
-  TANDOOR_REPO: TandoorRecipes/recipes
+  UPSTREAM_REPO: TandoorRecipes/recipes
   BASEIMAGE_REPO: linuxserver/docker-baseimage-alpine
 
 jobs:
-  monitor-tandoor:
-    name: Monitor Tandoor Releases
+  monitor-upstream:
+    name: Monitor tandoor Updates
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      new_version_available: ${{ steps.version-check.outputs.new_version_available }}
+      latest_version: ${{ steps.version-check.outputs.latest_version }}
+      current_version: ${{ steps.version-check.outputs.current_version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Get current Tandoor version
-        id: current
+      - name: Check for new tandoor releases
+        id: version-check
         run: |
-          CURRENT_VERSION=$(grep 'TANDOOR_VERSION="' Dockerfile | sed 's/.*TANDOOR_VERSION="\([^"]*\)".*/\1/')
-          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          echo "Current Tandoor version: $CURRENT_VERSION"
+          echo "Checking for new releases from TandoorRecipes/recipes..."
 
-      - name: Get latest Tandoor release
-        id: latest
-        run: |
-          LATEST_VERSION=$(gh api repos/${{ env.TANDOOR_REPO }}/releases/latest --jq '.tag_name')
-          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "Latest Tandoor version: $LATEST_VERSION"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Get latest release from GitHub API
+          latest_release=$(curl -s "https://api.github.com/repos/TandoorRecipes/recipes/releases/latest")
+          latest_version=$(echo "$latest_release" | jq -r '.tag_name // .name // "unknown"' | sed 's/^v//')
 
-      - name: Create missing labels if needed
-        run: |
-          # Create labels if they don't exist
-          gh label create "upstream-update" --color "0366d6" --description "Upstream dependency update available" || true
-          gh label create "automated" --color "fbca04" --description "Automated issue or PR" || true
-          gh label create "enhancement" --color "a2eeef" --description "New feature or request" || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Extract current version from various possible sources
+          current_version="unknown"
 
-      - name: Compare versions and create issue if outdated
-        if: steps.current.outputs.version != steps.latest.outputs.version
-        run: |
-          ISSUE_TITLE="🔄 Tandoor Recipes Update Available: ${{ steps.latest.outputs.version }}"
-          ISSUE_BODY="## 📦 New Tandoor Recipes Release Available
-
-          **Current Version:** \`${{ steps.current.outputs.version }}\`
-          **Latest Version:** \`${{ steps.latest.outputs.version }}\`
-
-          ### 📋 Update Checklist
-
-          - [ ] Review [Tandoor Recipes Changelog](https://github.com/${{ env.TANDOOR_REPO }}/releases/tag/${{ steps.latest.outputs.version }})
-          - [ ] Update \`TANDOOR_VERSION\` in Dockerfile
-          - [ ] Test build and functionality
-          - [ ] Update CHANGELOG.md with new version
-          - [ ] Create release with updated version
-
-          ### 🔗 Links
-
-          - [Tandoor Release]( https://github.com/${{ env.TANDOOR_REPO }}/releases/tag/${{ steps.latest.outputs.version }})
-          - [Tandoor Repository](https://github.com/${{ env.TANDOOR_REPO }})
-
-          **Created by:** Upstream Monitor Workflow
-          **Triggered:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-
-          # Check if issue already exists
-          EXISTING_ISSUE=$(gh issue list --limit 100 --search "Tandoor Recipes Update Available" --json number,title --jq '.[] | select(.title | contains("${{ steps.latest.outputs.version }}")) | .number')
-
-          if [ -z "$EXISTING_ISSUE" ]; then
-            gh issue create \
-              --title "$ISSUE_TITLE" \
-              --body "$ISSUE_BODY" \
-              --label "enhancement,upstream-update,automated"
-            echo "✅ Created issue for Tandoor update to ${{ steps.latest.outputs.version }}"
-          else
-            echo "ℹ️ Issue already exists for version ${{ steps.latest.outputs.version }} (#$EXISTING_ISSUE)"
+          # Try VERSION file first
+          if [[ -f "VERSION" ]]; then
+            current_version=$(cat VERSION | head -1 | tr -d ' \n\r')
+          # Try Dockerfile ARG
+          elif [[ -f "Dockerfile" ]]; then
+            dockerfile_version=$(grep -E "ARG.*TANDOOR_VERSION|ARG.*VERSION" Dockerfile | head -1 | cut -d'=' -f2 | tr -d '"' | tr -d ' \n\r')
+            if [[ -n "$dockerfile_version" && "$dockerfile_version" != "latest" ]]; then
+              current_version="$dockerfile_version"
+            fi
+          # Try docker-compose.yml or .env.example
+          elif [[ -f ".env.example" ]]; then
+            env_version=$(grep -E "TANDOOR_VERSION|VERSION" .env.example | head -1 | cut -d'=' -f2 | tr -d ' \n\r')
+            if [[ -n "$env_version" ]]; then
+              current_version="$env_version"
+            fi
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log version check result
-        run: |
-          if [ "${{ steps.current.outputs.version }}" = "${{ steps.latest.outputs.version }}" ]; then
-            echo "✅ Tandoor Recipes is up to date (v${{ steps.current.outputs.version }})"
+          echo "Current version: $current_version"
+          echo "Latest upstream version: $latest_version"
+
+          # Compare versions (simple string comparison for now)
+          if [[ "$latest_version" != "unknown" && "$current_version" != "unknown" && "$latest_version" != "$current_version" ]]; then
+            echo "new_version_available=true" >> $GITHUB_OUTPUT
+            echo "✅ New version available: $latest_version (current: $current_version)"
+
+            # Get release information
+            release_url=$(echo "$latest_release" | jq -r '.html_url // ""')
+            release_body=$(echo "$latest_release" | jq -r '.body // ""' | head -c 500)
+            release_date=$(echo "$latest_release" | jq -r '.published_at // .created_at // ""')
+
+            echo "release_url=$release_url" >> $GITHUB_OUTPUT
+            echo "release_date=$release_date" >> $GITHUB_OUTPUT
+            {
+              echo 'release_notes<<EOF'
+              echo "$release_body"
+              echo 'EOF'
+            } >> $GITHUB_OUTPUT
+
           else
-            echo "⚠️ Tandoor Recipes update available: ${{ steps.current.outputs.version }} → ${{ steps.latest.outputs.version }}"
+            echo "new_version_available=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No new version available"
           fi
+
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "current_version=$current_version" >> $GITHUB_OUTPUT
+
+      - name: Check if recent update issue exists
+        id: issue-check
+        if: steps.version-check.outputs.new_version_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'upstream,update',
+              per_page: 10
+            });
+
+            const recentIssue = issues.find(issue =>
+              issue.title.includes('tandoor') &&
+              issue.title.includes('${{ steps.version-check.outputs.latest_version }}')
+            );
+
+            if (recentIssue && !${{ github.event.inputs.force_check || false }}) {
+              console.log(`Found recent issue: ${recentIssue.html_url}`);
+              core.setOutput('should_create_issue', 'false');
+            } else {
+              core.setOutput('should_create_issue', 'true');
+            }
+
+      - name: Create update notification issue
+        if: steps.version-check.outputs.new_version_available == 'true' && steps.issue-check.outputs.should_create_issue == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = '🔔 tandoor ${{ steps.version-check.outputs.latest_version }} Available';
+            const body = `## tandoor Update Available
+
+            A new version of tandoor is available for update.
+
+            ### Version Information
+            - **Current Version:** ${{ steps.version-check.outputs.current_version }}
+            - **Latest Version:** ${{ steps.version-check.outputs.latest_version }}
+            - **Release Date:** ${{ steps.version-check.outputs.release_date }}
+            - **Release URL:** ${{ steps.version-check.outputs.release_url }}
+
+            ### Release Notes
+            ${{ steps.version-check.outputs.release_notes }}
+
+            ### Update Checklist
+            - [ ] Review upstream release notes and changelog
+            - [ ] Check for breaking changes or new requirements
+            - [ ] Update version in appropriate files (VERSION, Dockerfile, .env.example)
+            - [ ] Update documentation if needed
+            - [ ] Test build and functionality
+            - [ ] Update CHANGELOG.md with new version notes
+            - [ ] Create release after validation
+
+            ### Files to Update
+            - [ ] \`VERSION\` file (if exists)
+            - [ ] \`Dockerfile\` (TANDOOR_VERSION argument)
+            - [ ] \`.env.example\` (version environment variables)
+            - [ ] \`README.md\` and \`README.de.md\` (version references)
+            - [ ] \`CHANGELOG.md\` (add new version entry)
+
+            ### Security Assessment
+            - [ ] Review security fixes in the new version
+            - [ ] Check CVE database for any security-related updates
+            - [ ] Prioritize update if security fixes are included
+
+            ---
+            **Upstream Repository:** [TandoorRecipes/recipes](https://github.com/TandoorRecipes/recipes)
+            **Monitoring:** This issue was created automatically by upstream monitoring workflow
+            **Next Check:** Monday/Thursday at 6 AM UTC
+
+            *Close this issue after completing the update or if the update is not needed.*
+            `;
+
+            // Create the issue
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['upstream', 'update', 'enhancement', 'automated']
+            });
+
+            console.log(`✅ Created update issue: ${issue.html_url}`);
 
   monitor-baseimage:
-    name: Monitor Base Image Updates
+    name: Monitor LinuxServer.io Base Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      baseimage_update_available: ${{ steps.baseimage-check.outputs.update_available }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Get current base image version
-        id: current
+      - name: Check LinuxServer.io base image updates
+        id: baseimage-check
         run: |
-          CURRENT_VERSION=$(grep 'FROM ghcr.io/linuxserver/baseimage-alpine:' Dockerfile | sed 's/.*baseimage-alpine:\([^[:space:]]*\).*/\1/')
-          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          echo "Current base image version: $CURRENT_VERSION"
+          if [[ -f "Dockerfile" ]]; then
+            # Extract current base image version
+            current_baseimage=$(grep "FROM.*linuxserver/baseimage-alpine" Dockerfile | head -1 | awk '{print $2}' | cut -d':' -f2 || echo "")
 
-      - name: Get latest base image tags
-        id: latest
-        run: |
-          # Get the latest 3.22.x version from Docker Hub API (more reliable)
-          LATEST_VERSION=$(curl -s "https://registry.hub.docker.com/v2/repositories/linuxserver/baseimage-alpine/tags" | jq -r '.results[] | select(.name | startswith("3.22")) | .name' | head -1)
-          # Fallback to GitHub API if Docker Hub fails
-          if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
-            LATEST_VERSION=$(gh api repos/${{ env.BASEIMAGE_REPO }}/releases --jq '[.[] | select(.tag_name | startswith("alpine-3.22")) | .tag_name] | .[0]' | sed 's/alpine-//' || echo "3.22")
-          fi
-          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "Latest base image version: $LATEST_VERSION"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            if [[ -n "$current_baseimage" ]]; then
+              echo "Current base image version: $current_baseimage"
 
-      - name: Create missing base image labels if needed
-        run: |
-          # Create labels if they don't exist
-          gh label create "base-image-update" --color "0052cc" --description "Base image update available" || true
-          gh label create "automated" --color "fbca04" --description "Automated issue or PR" || true
-          gh label create "enhancement" --color "a2eeef" --description "New feature or request" || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              # Get latest releases from LinuxServer.io baseimage repository
+              latest_releases=$(curl -s "https://api.github.com/repos/${BASEIMAGE_REPO}/releases?per_page=5")
+              latest_tag=$(echo "$latest_releases" | jq -r '.[0].tag_name // "unknown"')
 
-      - name: Compare base image versions
-        if: steps.current.outputs.version != steps.latest.outputs.version
-        run: |
-          ISSUE_TITLE="🔄 Base Image Update Available: alpine-${{ steps.latest.outputs.version }}"
-          ISSUE_BODY="## 🐧 New LinuxServer.io Base Image Available
+              echo "Latest base image tag: $latest_tag"
 
-          **Current Version:** \`alpine-${{ steps.current.outputs.version }}\`
-          **Latest Version:** \`alpine-${{ steps.latest.outputs.version }}\`
+              # Simple comparison (this could be enhanced with better version comparison)
+              if [[ "$latest_tag" != "unknown" && "$latest_tag" != "$current_baseimage" ]]; then
+                # Check if this is a significant update (different major version)
+                if [[ "$latest_tag" =~ ^[0-9]+\.[0-9]+ ]] && [[ "$current_baseimage" =~ ^[0-9]+\.[0-9]+ ]]; then
+                  latest_major=$(echo "$latest_tag" | cut -d'.' -f1)
+                  current_major=$(echo "$current_baseimage" | cut -d'.' -f1)
 
-          ### 📋 Update Checklist
-
-          - [ ] Review [LinuxServer.io Base Image Changelog](https://github.com/${{ env.BASEIMAGE_REPO }}/releases/tag/alpine-${{ steps.latest.outputs.version }})
-          - [ ] Update \`FROM\` line in Dockerfile
-          - [ ] Test build and functionality
-          - [ ] Verify S6 Overlay compatibility
-          - [ ] Update CHANGELOG.md with base image update
-
-          ### 🔗 Links
-
-          - [Base Image Release](https://github.com/${{ env.BASEIMAGE_REPO }}/releases/tag/alpine-${{ steps.latest.outputs.version }})
-          - [LinuxServer.io Repository](https://github.com/${{ env.BASEIMAGE_REPO }})
-
-          **Created by:** Upstream Monitor Workflow
-          **Triggered:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-
-          # Check if issue already exists
-          EXISTING_ISSUE=$(gh issue list --limit 100 --search "Base Image Update Available" --json number,title --jq '.[] | select(.title | contains("${{ steps.latest.outputs.version }}")) | .number')
-
-          if [ -z "$EXISTING_ISSUE" ]; then
-            gh issue create \
-              --title "$ISSUE_TITLE" \
-              --body "$ISSUE_BODY" \
-              --label "enhancement,base-image-update,automated"
-            echo "✅ Created issue for base image update to alpine-${{ steps.latest.outputs.version }}"
+                  if [[ "$latest_major" -gt "$current_major" ]] || [[ "$latest_tag" > "$current_baseimage" ]]; then
+                    echo "update_available=true" >> $GITHUB_OUTPUT
+                    echo "latest_baseimage=$latest_tag" >> $GITHUB_OUTPUT
+                    echo "current_baseimage=$current_baseimage" >> $GITHUB_OUTPUT
+                    echo "✅ Base image update available: $latest_tag"
+                  else
+                    echo "update_available=false" >> $GITHUB_OUTPUT
+                    echo "ℹ️ Current base image is up to date"
+                  fi
+                else
+                  echo "update_available=false" >> $GITHUB_OUTPUT
+                  echo "ℹ️ Could not determine version comparison"
+                fi
+              else
+                echo "update_available=false" >> $GITHUB_OUTPUT
+                echo "ℹ️ No base image update needed"
+              fi
+            else
+              echo "update_available=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ No LinuxServer.io base image detected"
+            fi
           else
-            echo "ℹ️ Issue already exists for version alpine-${{ steps.latest.outputs.version }} (#$EXISTING_ISSUE)"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log base image check result
-        run: |
-          if [ "${{ steps.current.outputs.version }}" = "${{ steps.latest.outputs.version }}" ]; then
-            echo "✅ Base image is up to date (alpine-${{ steps.current.outputs.version }})"
-          else
-            echo "⚠️ Base image update available: alpine-${{ steps.current.outputs.version }} → alpine-${{ steps.latest.outputs.version }}"
+            echo "update_available=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No Dockerfile found"
           fi
 
-  security-check:
-    name: Security Update Check
+      - name: Create base image update issue
+        if: steps.baseimage-check.outputs.update_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Check for existing base image update issues
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'baseimage,update'
+            });
+
+            const existingIssue = issues.find(issue =>
+              issue.title.includes('LinuxServer.io') &&
+              issue.title.includes('${{ steps.baseimage-check.outputs.latest_baseimage }}')
+            );
+
+            if (!existingIssue) {
+              const title = '🔔 LinuxServer.io Base Image ${{ steps.baseimage-check.outputs.latest_baseimage }} Available';
+              const body = `## LinuxServer.io Base Image Update
+
+              A new version of the LinuxServer.io Alpine base image is available.
+
+              ### Version Information
+              - **Current Version:** ${{ steps.baseimage-check.outputs.current_baseimage }}
+              - **Latest Version:** ${{ steps.baseimage-check.outputs.latest_baseimage }}
+              - **Repository:** [${BASEIMAGE_REPO}](https://github.com/${BASEIMAGE_REPO})
+
+              ### Update Process
+              - [ ] Review base image changelog for breaking changes
+              - [ ] Update Dockerfile FROM statement
+              - [ ] Test build with new base image
+              - [ ] Run security scans on updated image
+              - [ ] Update any dependent configurations
+              - [ ] Create release after validation
+
+              ### Testing Checklist
+              - [ ] Container builds successfully
+              - [ ] Application starts without errors
+              - [ ] All S6 overlay services function correctly
+              - [ ] Health checks pass
+              - [ ] Security scans show no new critical issues
+              - [ ] Multi-platform builds work (AMD64, ARM64)
+
+              ### Base Image Benefits
+              Base image updates typically include:
+              - Security patches and updates
+              - Alpine Linux updates
+              - S6 Overlay improvements
+              - Performance optimizations
+
+              ---
+              **Base Image Repository:** [${BASEIMAGE_REPO}](https://github.com/${BASEIMAGE_REPO})
+              **Update Priority:** Medium (unless security-related)
+              **Next Check:** Monday/Thursday at 6 AM UTC
+              `;
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['baseimage', 'update', 'maintenance', 'automated']
+              });
+
+              console.log('✅ Created base image update issue');
+            } else {
+              console.log('ℹ️ Base image update issue already exists');
+            }
+
+  monitoring-summary:
+    name: Monitoring Summary
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Check for security updates
-        run: |
-          echo "## 🔒 Security Update Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Checking for critical security updates..." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Check for CVE updates in dependencies
-          if [ -f "requirements.txt" ]; then
-            echo "- ✅ Python requirements.txt found" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ -f "Dockerfile" ]; then
-            echo "- ✅ Dockerfile found" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Note:** Manual security review recommended for critical updates." >> $GITHUB_STEP_SUMMARY
-
-  summary:
-    name: Monitor Summary
-    runs-on: ubuntu-latest
-    needs: [monitor-tandoor, monitor-baseimage, security-check]
+    needs: [monitor-upstream, monitor-baseimage]
     if: always()
     steps:
-      - name: Generate summary
+      - name: Generate monitoring summary
         run: |
-          echo "## 📊 Upstream Monitor Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 Upstream Monitoring Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Monitoring Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | Current | Latest |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|---------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| tandoor | ${{ needs.monitor-upstream.result }} | ${{ needs.monitor-upstream.outputs.current_version || 'unknown' }} | ${{ needs.monitor-upstream.outputs.latest_version || 'unknown' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| LinuxServer.io Base | ${{ needs.monitor-baseimage.result }} | - | - |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Monitored Components" >> $GITHUB_STEP_SUMMARY
+
+          # Determine if any updates are available
+          if [[ "${{ needs.monitor-upstream.outputs.new_version_available }}" == "true" ]] || [[ "${{ needs.monitor-baseimage.outputs.baseimage_update_available }}" == "true" ]]; then
+            echo "🔔 **Updates Available:** Check the Issues tab for update notifications" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Status:** All components are up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- 🍴 Tandoor Recipes (TandoorRecipes/recipes)" >> $GITHUB_STEP_SUMMARY
-          echo "- 🐧 LinuxServer.io Alpine Base Image" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔒 Security Updates" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next Check:** Scheduled for Monday and Thursday at 6 AM UTC" >> $GITHUB_STEP_SUMMARY
+          echo "📅 **Next Check:** Monday and Thursday at 6 AM UTC" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Upstream:** [TandoorRecipes/recipes](https://github.com/TandoorRecipes/recipes)" >> $GITHUB_STEP_SUMMARY

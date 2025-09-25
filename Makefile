@@ -6,7 +6,7 @@ DOCKER_REPO = mildman1848/tandoor
 VERSION ?= latest
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 VCS_REF := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-TANDOOR_VERSION ?= 2.2.6
+TANDOOR_VERSION ?= 2.2.7
 UPSTREAM_REPO = TandoorRecipes/recipes
 
 # Platform support for multi-architecture builds
