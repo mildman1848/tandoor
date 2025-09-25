@@ -2,14 +2,14 @@
 # Extract Vite assets from official Tandoor image
 FROM ghcr.io/tandoorrecipes/recipes:latest AS vite_assets
 
-FROM ghcr.io/linuxserver/baseimage-alpine:3.22
+FROM ghcr.io/linuxserver/baseimage-alpine:3.22-02acf855-ls10
 
 # Build arguments
 ARG BUILD_DATE
 ARG VERSION
 ARG VCS_REF
-ARG TANDOOR_VERSION="2.2.4"
-ARG PROJECT_VERSION="2.2.4-automation.1"
+ARG TANDOOR_VERSION="2.2.5"
+ARG PROJECT_VERSION="2.2.5"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
