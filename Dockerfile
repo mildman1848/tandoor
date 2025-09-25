@@ -1,6 +1,6 @@
 # Multi-stage build for Tandoor Recipes based on LinuxServer.io Alpine
 # Extract Vite assets from official Tandoor image
-FROM ghcr.io/tandoorrecipes/recipes:latest AS vite_assets
+FROM ghcr.io/tandoorrecipes/recipes:2.2.5 AS vite_assets
 
 FROM ghcr.io/linuxserver/baseimage-alpine:3.22-02acf855-ls10
 
@@ -38,6 +38,7 @@ RUN mkdir -p /app && chown abc:abc /app
 WORKDIR /app
 
 # Install build and runtime packages, build Python deps, then cleanup
+# hadolint ignore=DL3018
 RUN \
     echo "**** install build packages ****" && \
     apk add --no-cache --virtual .build-deps \

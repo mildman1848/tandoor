@@ -380,3 +380,8 @@ data/
 db/
 security/
 security-reports/
+
+# Baseimage testing (2025-09-25)
+BASEIMAGE_UPDATE_REPORT.md
+baseimage-test-*.log
+baseimage-test-*.json

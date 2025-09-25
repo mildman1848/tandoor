@@ -6,7 +6,7 @@ DOCKER_REPO = mildman1848/tandoor
 VERSION ?= latest
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 VCS_REF := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-TANDOOR_VERSION ?= 2.2.4
+TANDOOR_VERSION ?= 2.2.5
 UPSTREAM_REPO = TandoorRecipes/recipes
 
 # Platform support for multi-architecture builds
@@ -24,7 +24,7 @@ YELLOW = \033[0;33m
 BLUE = \033[0;34m
 NC = \033[0m # No Color
 
-.PHONY: help build build-multiarch build-manifest build-manifest-push inspect-manifest validate-manifest push test clean lint validate security-scan secrets-generate secrets-rotate secrets-clean secrets-info env-setup env-validate setup version-check
+.PHONY: help build build-multiarch build-manifest build-manifest-push inspect-manifest validate-manifest push test clean lint validate security-scan secrets-generate secrets-rotate secrets-clean secrets-info env-setup env-validate setup version-check baseimage-check baseimage-test baseimage-update
 
 # Default target
 all: help
@@ -462,3 +462,64 @@ secrets-django: ## Generate Django-optimized secrets for Tandoor Recipes
 	@echo "  Session Key: $(shell wc -c < secrets/tandoor_session_key.txt 2>/dev/null || echo '0') characters"
 	@echo "  DB Encryption: $(shell wc -c < secrets/tandoor_db_key.txt 2>/dev/null || echo '0') characters"
 	@echo "$(YELLOW)⚠️  Store these securely - never commit to version control!$(NC)"
+
+## LinuxServer.io baseimage management
+baseimage-check: ## Check for LinuxServer.io baseimage updates
+	@echo "$(GREEN)Checking for LinuxServer.io baseimage updates...$(NC)"
+	@if [ -f scripts/baseimage-update-test.sh ]; then \
+		chmod +x scripts/baseimage-update-test.sh; \
+		echo "$(BLUE)Current project: tandoor$(NC)"; \
+		echo "$(YELLOW)Checking LinuxServer.io baseimage-alpine versions...$(NC)"; \
+		LATEST_BASEIMAGE=$$(curl -s "https://api.github.com/repos/linuxserver/docker-baseimage-alpine/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 2>/dev/null || echo "unknown"); \
+		if [ "$$LATEST_BASEIMAGE" != "unknown" ]; then \
+			echo "$(BLUE)Latest baseimage version: $$LATEST_BASEIMAGE$(NC)"; \
+			echo "$(YELLOW)Run 'make baseimage-test' to test compatibility$(NC)"; \
+		else \
+			echo "$(RED)✗ Could not fetch latest baseimage version$(NC)"; \
+		fi; \
+	else \
+		echo "$(RED)✗ Baseimage update script not found$(NC)"; \
+		echo "$(YELLOW)Copy scripts/baseimage-update-test.sh from template project$(NC)"; \
+	fi
+
+baseimage-test: ## Test new LinuxServer.io baseimage version
+	@echo "$(GREEN)Testing new LinuxServer.io baseimage version...$(NC)"
+	@if [ -f scripts/baseimage-update-test.sh ]; then \
+		chmod +x scripts/baseimage-update-test.sh; \
+		echo "$(BLUE)Running comprehensive baseimage compatibility test...$(NC)"; \
+		./scripts/baseimage-update-test.sh || \
+		(echo "$(RED)✗ Baseimage test failed - check BASEIMAGE_UPDATE_REPORT.md$(NC)"; \
+		echo "$(YELLOW)Review logs: baseimage-test-build.log, baseimage-test-container.log$(NC)"; \
+		exit 1); \
+		echo "$(GREEN)✓ Baseimage test completed - check BASEIMAGE_UPDATE_REPORT.md$(NC)"; \
+	else \
+		echo "$(RED)✗ Baseimage update script not found$(NC)"; \
+		echo "$(YELLOW)Copy scripts/baseimage-update-test.sh from template project$(NC)"; \
+		exit 1; \
+	fi
+
+baseimage-update: ## Update to latest LinuxServer.io baseimage (requires manual verification)
+	@echo "$(GREEN)Updating to latest LinuxServer.io baseimage...$(NC)"
+	@echo "$(YELLOW)⚠️  IMPORTANT: Run 'make baseimage-test' first to ensure compatibility$(NC)"
+	@echo "$(BLUE)This will update the Dockerfile to use the latest baseimage version.$(NC)"
+	@read -p "Have you run and verified 'make baseimage-test' successfully? (y/N): " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		LATEST_BASEIMAGE=$$(curl -s "https://api.github.com/repos/linuxserver/docker-baseimage-alpine/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 2>/dev/null); \
+		if [ -n "$$LATEST_BASEIMAGE" ] && [ "$$LATEST_BASEIMAGE" != "unknown" ]; then \
+			echo "$(BLUE)Updating Dockerfile to use baseimage: $$LATEST_BASEIMAGE$(NC)"; \
+			sed -i "s|FROM ghcr.io/linuxserver/baseimage-alpine:[0-9\.]*-[a-f0-9]*-ls[0-9]*|FROM ghcr.io/linuxserver/baseimage-alpine:$$LATEST_BASEIMAGE|g" Dockerfile; \
+			echo "$(GREEN)✓ Dockerfile updated to use baseimage $$LATEST_BASEIMAGE$(NC)"; \
+			echo "$(YELLOW)Next steps:$(NC)"; \
+			echo "  1. Review the Dockerfile changes"; \
+			echo "  2. Run 'make build' to build with new baseimage"; \
+			echo "  3. Run 'make test' to verify functionality"; \
+			echo "  4. Update documentation if needed"; \
+			echo "  5. Commit changes when satisfied"; \
+		else \
+			echo "$(RED)✗ Could not fetch latest baseimage version$(NC)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "$(YELLOW)Baseimage update cancelled. Run 'make baseimage-test' first.$(NC)"; \
+		exit 1; \
+	fi

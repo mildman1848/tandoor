@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.5-1] - 2025-09-25
+
+### 🚀 Version Update
+- **Tandoor Update**: Upgraded from 2.2.4 to 2.2.5 (latest upstream release)
+- **Dockerfile Fix**: Fixed Hadolint warnings by pinning vite_assets stage and adding ignore directive
+
+### 🔧 Build & Infrastructure Updates
+- **Baseimage Testing**: Added comprehensive baseimage update testing system with Make targets
+- **Docker Fixes**: Fixed Hadolint DL3007 warning by pinning vite_assets FROM statement
+
+### 📝 File Management
+- **gitignore**: Added baseimage testing files (BASEIMAGE_UPDATE_REPORT.md, baseimage-test-*.log, baseimage-test-*.json)
+- **Security**: Enhanced ignored patterns for security scan results and testing artifacts
+
+### 🛠️ Make Command Extensions
+- `make baseimage-check`: Check for LinuxServer.io baseimage updates
+- `make baseimage-test`: Test new LinuxServer.io baseimage version
+- `make baseimage-update`: Update to latest LinuxServer.io baseimage
+
+### ✅ Validation Status
+- **Upstream Version**: 2.2.5 confirmed as current (updated from 2.2.4)
+- **Base Image**: 3.22-02acf855-ls10 confirmed as latest
+- **Dockerfile**: Hadolint warnings resolved
+- **CI/CD Pipeline**: All workflows now pass successfully
+
 ## [2.2.4-1] - 2025-09-24
 
 ### 🚀 MAJOR: Tandoor 2.2.4 Migration & White Screen Fix
