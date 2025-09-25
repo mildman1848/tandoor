@@ -148,9 +148,15 @@ jobs:
 
       - name: Wait for container
         run: |
-          # Wait for container to be ready
-          timeout 120s bash -c 'while [[ "$(docker inspect -f {{.State.Health.Status}} tandoor-test 2>/dev/null)" != "healthy" ]]; do sleep 2; done' || \
-          timeout 120s bash -c 'while ! docker exec tandoor-test curl -f http://localhost:80/ >/dev/null 2>&1; do sleep 2; done'
+          # Wait for container to be ready (increased timeout for CI environment)
+          timeout 300s bash -c 'while [[ "$(docker inspect -f {{.State.Health.Status}} tandoor-test 2>/dev/null)" != "healthy" ]]; do
+            echo "Waiting for container health check... Status: $(docker inspect -f {{.State.Health.Status}} tandoor-test 2>/dev/null || echo "unknown")"
+            sleep 5
+          done' || \
+          timeout 300s bash -c 'while ! docker exec tandoor-test curl -f http://localhost:8080/ >/dev/null 2>&1; do
+            echo "Waiting for HTTP response from container..."
+            sleep 5
+          done'
 
       - name: Test container health
         run: |
@@ -258,8 +264,15 @@ jobs:
 
       - name: Wait and test service
         run: |
-          # Wait for service
-          sleep 30
+          # Wait for service to be ready (comprehensive health check)
+          echo "Waiting for tandoor service to be healthy..."
+          timeout 300s bash -c 'while [[ "$(docker compose exec -T tandoor ps aux | grep -c gunicorn | tr -d "\r")" -lt "2" ]]; do
+            echo "Waiting for gunicorn processes to start..."
+            sleep 10
+          done'
+
+          # Additional wait for service initialization
+          sleep 20
 
           # Test if service is responding
           curl -f http://localhost:18080/ || \
