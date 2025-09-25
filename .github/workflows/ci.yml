@@ -234,6 +234,7 @@ jobs:
           # Override with test values
           cat >> .env << EOF
           VERSION=test
+          IMAGE_TAG=test
           EXTERNAL_PORT=18080
           LOG_LEVEL=debug
           EOF
