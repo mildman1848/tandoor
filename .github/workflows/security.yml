@@ -149,16 +149,19 @@ jobs:
           image: mildman1848/tandoor:scan
           args: --severity-threshold=high --sarif-file-output=snyk-results.sarif
 
-      - name: Create empty SARIF file if Snyk didn't generate one
+      - name: Check if Snyk generated SARIF file
+        id: snyk-sarif-check
         if: always()
         run: |
-          if [ ! -f snyk-results.sarif ]; then
-            echo '{"version": "2.1.0", "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json", "runs": []}' > snyk-results.sarif
+          if [ -f snyk-results.sarif ] && [ -s snyk-results.sarif ]; then
+            echo "sarif_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "sarif_exists=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload Snyk results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && hashFiles('snyk-results.sarif') != ''
+        if: steps.snyk-sarif-check.outputs.sarif_exists == 'true'
         with:
           sarif_file: snyk-results.sarif
           category: 'snyk-dependencies'
