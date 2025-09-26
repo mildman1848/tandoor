@@ -17,22 +17,26 @@ chown -R abc:abc /app/mediafiles /app/staticfiles 2>/dev/null || true
 
 cd /app
 
-echo "Waiting for database to be ready..."
-# Wait for database using pg_isready like original image
-attempt=0
-max_attempts=20
-while ! pg_isready --host=${POSTGRES_HOST:-db_recipes} --port=${POSTGRES_PORT:-5432} --user=${POSTGRES_USER:-djangouser} -q; do
-    attempt=$((attempt+1))
-    if [ $attempt -gt $max_attempts ]; then
-        echo "❌ Database not reachable. Maximum attempts exceeded."
-        echo "Please check logs above - misconfiguration is very likely."
-        echo "Make sure the DB container is up and POSTGRES_HOST is set properly."
-        exit 1
-    fi
-    echo "Waiting for database... (attempt $attempt/$max_attempts)"
-    sleep 5
-done
-echo "✓ Database is ready"
+# Wait for database if using PostgreSQL
+if [[ "${DB_ENGINE:-django.db.backends.postgresql}" == *"postgresql"* ]]; then
+    echo "Waiting for PostgreSQL database to be ready..."
+    attempt=0
+    max_attempts=20
+    while ! pg_isready --host=${POSTGRES_HOST:-db_recipes} --port=${POSTGRES_PORT:-5432} --user=${POSTGRES_USER:-djangouser} -q; do
+        attempt=$((attempt+1))
+        if [ $attempt -gt $max_attempts ]; then
+            echo "❌ Database not reachable. Maximum attempts exceeded."
+            echo "Please check logs above - misconfiguration is very likely."
+            echo "Make sure the DB container is up and POSTGRES_HOST is set properly."
+            exit 1
+        fi
+        echo "Waiting for database... (attempt $attempt/$max_attempts)"
+        sleep 5
+    done
+    echo "✓ PostgreSQL database is ready"
+else
+    echo "✓ Using ${DB_ENGINE:-django.db.backends.postgresql} - no database wait required"
+fi
 
 echo "Migrating database..."
 # Run database migrations as abc user (CRITICAL - this was missing!)
