@@ -31,10 +31,14 @@ jobs:
           failure-threshold: warning
           ignore: DL3007,DL3018,DL3013
 
+      - name: Setup Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin
+          docker compose version
+
       - name: Validate docker-compose.yml
         run: |
-          # Use docker compose (plugin version)
-          docker compose --version
           docker compose config -q
 
       - name: Check Makefile syntax
