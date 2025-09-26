@@ -216,7 +216,7 @@ test: ## Test the Docker image
 	@echo "Stopping test container..."
 	@$(DOCKER) stop tandoor-test
 	@echo "Cleaning up test directories..."
-	@rm -rf /tmp/claude/tandoor-test-*
+	@sudo rm -rf /tmp/claude/tandoor-test-* 2>/dev/null || rm -rf /tmp/claude/tandoor-test-* 2>/dev/null || true
 	@echo "$(GREEN)All tests passed!$(NC)"
 
 ## Security and validation targets
