@@ -25,6 +25,9 @@ jobs:
       actions: read
       contents: read
 
+    # Only run manually - CodeQL analysis for Django app with Python/JavaScript
+    if: github.event_name == 'workflow_dispatch'
+
     strategy:
       fail-fast: false
       matrix:
