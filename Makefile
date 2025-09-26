@@ -362,7 +362,7 @@ secrets-generate-ci: ## Generate standardized secrets for CI workflows (GitHub A
 	@chmod 600 secrets/*.txt 2>/dev/null || true
 	@echo "$(GREEN)✓ CI secrets generated successfully!$(NC)"
 	@echo "$(BLUE)CI Secret Files Created:$(NC)"
-	@ls -la secrets/ 2>/dev/null | grep -E "(config_pass|password|postgres_)" | awk '{print "  " $$9 ": " $$5 " bytes"}' || echo "  All secrets generated"
+	@ls -la secrets/ 2>/dev/null | grep -E "(secret_key|password|postgres_)" | awk '{print "  " $$9 ": " $$5 " bytes"}' || echo "  All secrets generated"
 	@echo "$(YELLOW)ℹ️  These secrets match CI workflow generation patterns exactly$(NC)"
 
 secrets-rotate: ## Rotate existing secrets (keeps backups)
