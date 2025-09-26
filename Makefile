@@ -355,10 +355,9 @@ secrets-generate: ## Generate secure secrets for tandoor
 secrets-generate-ci: ## Generate standardized secrets for CI workflows (GitHub Actions)
 	@echo "$(GREEN)Generating CI-standardized secrets for GitHub Actions workflows...$(NC)"
 	@mkdir -p secrets
-	@echo "Generating comprehensive secret set for CI testing..."
-	@openssl rand -base64 32 | tr -d "=+/" | head -c 24 > secrets/tandoor_config_pass.txt
-	@openssl rand -base64 32 | tr -d "=+/" | head -c 20 > secrets/tandoor_password.txt
-	@openssl rand -base64 32 | tr -d "=+/" | head -c 24 > secrets/tandoor_postgres_password.txt
+	@echo "Generating Django-optimized secret set for CI testing..."
+	@openssl rand -base64 48 | tr -d "=+/" | head -c 64 > secrets/tandoor_secret_key.txt
+	@openssl rand -base64 32 | tr -d "=+/" | head -c 32 > secrets/tandoor_postgres_password.txt
 	@echo "tandoor" > secrets/tandoor_postgres_user.txt
 	@chmod 600 secrets/*.txt 2>/dev/null || true
 	@echo "$(GREEN)✓ CI secrets generated successfully!$(NC)"
