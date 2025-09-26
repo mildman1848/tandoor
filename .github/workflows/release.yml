@@ -136,14 +136,14 @@ jobs:
 
             **Docker Hub:**
             ```bash
-            docker pull mildman1848/tandoor:${{ needs.validate.outputs.version }}
-            docker pull mildman1848/tandoor:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:${{ needs.validate.outputs.version }}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:latest
             ```
 
             **GitHub Container Registry:**
             ```bash
-            docker pull ghcr.io/mildman1848/tandoor:${{ needs.validate.outputs.version }}
-            docker pull ghcr.io/mildman1848/tandoor:latest
+            docker pull ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/tandoor:${{ needs.validate.outputs.version }}
+            docker pull ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/tandoor:latest
             ```
 
             ## Architecture Support
@@ -153,7 +153,7 @@ jobs:
             ## Quick Start
             ```bash
             # Download docker-compose.yml
-            wget https://raw.githubusercontent.com/mildman1848/tandoor/v${{ needs.validate.outputs.version }}/docker-compose.yml
+            wget https://raw.githubusercontent.com/${{ github.repository_owner }}/tandoor/v${{ needs.validate.outputs.version }}/docker-compose.yml
 
             # Copy configuration template
             cp .env.example .env
@@ -166,12 +166,12 @@ jobs:
             ```
 
             ## Verification
-            - **Container Image:** `docker buildx imagetools inspect mildman1848/tandoor:${{ needs.validate.outputs.version }}`
+            - **Container Image:** `docker buildx imagetools inspect ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:${{ needs.validate.outputs.version }}`
             - **SBOM:** Available as release asset
             - **Security:** Scanned with Trivy, CodeQL, and TruffleHog
 
             ---
-            **Full Documentation:** [README.md](https://github.com/mildman1848/tandoor/blob/v${{ needs.validate.outputs.version }}/README.md)
+            **Full Documentation:** [README.md](https://github.com/${{ github.repository }}/blob/v${{ needs.validate.outputs.version }}/README.md)
 
             🤖 Generated with [Claude Code](https://claude.ai/code)
           draft: ${{ github.event.inputs.draft == 'true' }}
@@ -257,8 +257,8 @@ jobs:
             echo "🔗 **Release:** [tandoor v${{ needs.validate.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }})" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "📦 **Container Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`mildman1848/tandoor:${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`ghcr.io/mildman1848/tandoor:${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${{ secrets.DOCKERHUB_USERNAME }}/tandoor:${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/tandoor:${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Release creation failed - check logs above**" >> $GITHUB_STEP_SUMMARY
           fi

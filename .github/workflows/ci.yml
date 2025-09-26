@@ -111,7 +111,7 @@ jobs:
         with:
           context: .
           load: true
-          tags: mildman1848/tandoor:test
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:test
           cache-from: type=gha
           build-args: |
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
@@ -127,7 +127,7 @@ jobs:
           chmod 755 test-volumes/data test-volumes/media test-volumes/backup
 
           cat > .env << EOF
-          DOCKER_REPO=mildman1848/tandoor
+          DOCKER_REPO=${{ secrets.DOCKERHUB_USERNAME }}/tandoor
           VERSION=test
           PUID=1000
           PGID=1000
@@ -154,7 +154,7 @@ jobs:
             -e PUID=1000 \
             -e PGID=1000 \
             -e TZ=UTC \
-            mildman1848/tandoor:test
+            ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:test
 
       - name: Wait for container
         run: |
@@ -210,13 +210,13 @@ jobs:
         with:
           context: .
           load: true
-          tags: mildman1848/tandoor:scan
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan
           cache-from: type=gha
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'mildman1848/tandoor:scan'
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
 
@@ -229,7 +229,7 @@ jobs:
       - name: Run Trivy for detailed output
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'mildman1848/tandoor:scan'
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan'
           format: 'table'
           exit-code: '0'
 
@@ -272,7 +272,7 @@ jobs:
 
       - name: Build image first
         run: |
-          docker build -t mildman1848/tandoor:test .
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:test .
 
       - name: Test docker compose up
         run: |

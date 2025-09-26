@@ -33,7 +33,7 @@ jobs:
         with:
           context: .
           load: true
-          tags: mildman1848/tandoor:scan
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan
           cache-from: type=gha
           build-args: |
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
@@ -45,7 +45,7 @@ jobs:
       - name: Run Trivy vulnerability scanner (SARIF)
         uses: aquasecurity/trivy-action@0.30.0
         with:
-          image-ref: 'mildman1848/tandoor:scan'
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH,MEDIUM'
@@ -61,7 +61,7 @@ jobs:
       - name: Run Trivy vulnerability scanner (Table)
         uses: aquasecurity/trivy-action@0.30.0
         with:
-          image-ref: 'mildman1848/tandoor:scan'
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan'
           format: 'table'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           exit-code: '0'
@@ -146,7 +146,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          image: mildman1848/tandoor:scan
+          image: ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan
           args: --severity-threshold=high --sarif-file-output=snyk-results.sarif
 
       - name: Check if Snyk generated SARIF file
@@ -185,13 +185,13 @@ jobs:
         with:
           context: .
           load: true
-          tags: mildman1848/tandoor:sbom
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:sbom
           cache-from: type=gha
 
       - name: Generate SBOM with Syft
         uses: anchore/sbom-action@v0
         with:
-          image: mildman1848/tandoor:sbom
+          image: ${{ secrets.DOCKERHUB_USERNAME }}/tandoor:sbom
           format: spdx-json
           output-file: /tmp/sbom.spdx.json
 

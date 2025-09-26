@@ -13,7 +13,7 @@ on:
 env:
   REGISTRY_DOCKER: docker.io
   REGISTRY_GHCR: ghcr.io
-  IMAGE_NAME: mildman1848/tandoor
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/tandoor
 
 jobs:
   # Build individual platform images and push by digest
