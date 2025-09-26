@@ -3,6 +3,7 @@
 > 📖 **[Deutsche Version](README.de.md)** | 🇬🇧 **English Version**
 
 ![Build Status](https://github.com/mildman1848/tandoor/workflows/CI/badge.svg)
+![Security Scan](https://github.com/mildman1848/tandoor/workflows/Security%20Scan/badge.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/mildman1848/tandoor)
 ![Docker Image Size](https://img.shields.io/docker/image-size/mildman1848/tandoor/latest)
 ![License](https://img.shields.io/github/license/mildman1848/tandoor)
