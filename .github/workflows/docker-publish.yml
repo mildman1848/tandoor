@@ -95,7 +95,7 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=2.2.6
+            TANDOOR_VERSION=2.2.7
             PROJECT_VERSION=${{ steps.version.outputs.version }}
           outputs: type=image,name=${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha
@@ -118,7 +118,7 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=2.2.6
+            TANDOOR_VERSION=2.2.7
             PROJECT_VERSION=${{ steps.version.outputs.version }}
           outputs: type=image,name=${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha

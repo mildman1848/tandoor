@@ -92,8 +92,8 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test-${{ github.sha }}
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=$(cat VERSION || echo "2.2.6-automation.2")
-            PROJECT_VERSION=$(cat VERSION || echo "2.2.6-automation.2")
+            TANDOOR_VERSION=2.2.7
+            PROJECT_VERSION=2.2.7
 
   integration-test:
     name: Integration Tests
@@ -117,7 +117,7 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test
             VCS_REF=${{ github.sha }}
-            PROJECT_VERSION=$(cat VERSION || echo "2.2.6-automation.2")
+            PROJECT_VERSION=2.2.7
 
       - name: Create test environment
         run: |
