@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.7-1] - 2025-09-27
+
+### 🔧 GitHub Actions & CI/CD Fixes
+- **Fixed Docker workflow errors**: Resolved manifest inspection failures in `docker-publish.yml`
+- **Improved GitHub Actions syntax**: Changed problematic `for` loops to proper `while read` loops
+- **Enhanced error handling**: Added null tag validation in Docker publish workflows
+- **Version update**: Updated Tandoor Recipes to v2.2.7 (latest upstream)
+
+### 📋 Build & Container Validation
+- **Build system verified**: Multi-stage Docker build completed successfully
+- **Health checks**: Container startup and Django application functionality validated
+- **S6 Overlay services**: Complete LinuxServer.io service structure implemented
+- **Database migrations**: Automatic Django database setup and static file collection
+
+### 🛡️ Security & Standards Compliance
+- **Hadolint validation**: Dockerfile security best practices verified
+- **Configuration standardization**: Updated .gitignore, .dockerignore patterns
+- **Documentation cleanup**: Removed outdated references and updated version badges
+- **Pre-push compliance**: All validation checks passed
+
 ## [2.2.6-1] - 2025-09-25
 ### 🚀 Major Overhaul Release
 

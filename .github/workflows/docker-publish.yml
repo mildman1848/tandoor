@@ -280,18 +280,22 @@ jobs:
         run: |
           # Docker Hub inspection
           echo "=== Docker Hub Manifest Lists ==="
-          for tag in ${{ steps.meta-docker.outputs.tags }}; do
-            echo "Inspecting: ${tag}"
-            docker buildx imagetools inspect "${tag}" || true
-            echo "---"
+          echo '${{ steps.meta-docker.outputs.tags }}' | while read -r tag; do
+            if [[ -n "$tag" ]]; then
+              echo "Inspecting: ${tag}"
+              docker buildx imagetools inspect "${tag}" || true
+              echo "---"
+            fi
           done
 
           # GHCR inspection
           echo "=== GHCR Manifest Lists ==="
-          for tag in ${{ steps.meta-ghcr.outputs.tags }}; do
-            echo "Inspecting: ${tag}"
-            docker buildx imagetools inspect "${tag}" || true
-            echo "---"
+          echo '${{ steps.meta-ghcr.outputs.tags }}' | while read -r tag; do
+            if [[ -n "$tag" ]]; then
+              echo "Inspecting: ${tag}"
+              docker buildx imagetools inspect "${tag}" || true
+              echo "---"
+            fi
           done
 
   # Generate SBOM and attestations
