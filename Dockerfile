@@ -1,6 +1,6 @@
 # Multi-stage build for Tandoor Recipes based on LinuxServer.io Alpine
 # Extract Vite assets from official Tandoor image
-FROM ghcr.io/tandoorrecipes/recipes:2.2.7 AS vite_assets
+FROM ghcr.io/tandoorrecipes/recipes:2.3.0 AS vite_assets
 
 FROM ghcr.io/linuxserver/baseimage-alpine:3.22-a0dc0735-ls11
 
@@ -8,8 +8,8 @@ FROM ghcr.io/linuxserver/baseimage-alpine:3.22-a0dc0735-ls11
 ARG BUILD_DATE
 ARG VERSION
 ARG VCS_REF
-ARG TANDOOR_VERSION="2.2.7"
-ARG PROJECT_VERSION="2.2.7"
+ARG TANDOOR_VERSION="2.3.0"
+ARG PROJECT_VERSION="2.3.0"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \

@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0-1] - 2025-10-07
+
+### Changed
+- **Version update**: Updated Tandoor Recipes to v2.3.0 (latest upstream)
+- Updated all documentation and version badges
+- Updated Dockerfile base image references
+
 ## [2.2.7-1] - 2025-09-27
 
 ### 🔧 GitHub Actions & CI/CD Fixes
