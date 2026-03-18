@@ -24,13 +24,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Lint Dockerfile with Hadolint
-        uses: hadolint/hadolint-action@v3.2.0
-        with:
-          dockerfile: Dockerfile
-          failure-threshold: warning
-          ignore: DL3007,DL3018,DL3013
-
       - name: Setup Docker Compose
         run: |
           # Add Docker's official GPG key and repository

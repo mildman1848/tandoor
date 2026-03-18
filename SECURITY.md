@@ -1,5 +1,7 @@
 # Security Policy
 
+🇩🇪 **Deutsche Version:** [SECURITY.DE.md](SECURITY.DE.md)
+
 > 🇬🇧 **English Version** | 📖 **[Deutsche Version](SECURITY.de.md)**
 
 This document outlines the security policies, practices, and vulnerability reporting procedures for the Tandoor Recipes Docker image.
