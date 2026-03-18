@@ -85,8 +85,8 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test-${{ github.sha }}
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=2.2.7
-            PROJECT_VERSION=2.2.7
+            TANDOOR_VERSION=2.3.0
+            PROJECT_VERSION=2.3.0
 
   integration-test:
     name: Integration Tests
@@ -110,7 +110,8 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test
             VCS_REF=${{ github.sha }}
-            PROJECT_VERSION=2.2.7
+            TANDOOR_VERSION=2.3.0
+            PROJECT_VERSION=2.3.0
 
       - name: Create test environment
         run: |
@@ -203,7 +204,7 @@ jobs:
           cache-from: type=gha
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan'
           format: 'sarif'
@@ -211,12 +212,12 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: ${{ always() && hashFiles('trivy-results.sarif') != '' }}
         with:
           sarif_file: 'trivy-results.sarif'
 
       - name: Run Trivy for detailed output
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/tandoor:scan'
           format: 'table'

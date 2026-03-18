@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Updated CI and security workflows to use the current Tandoor base version `2.3.0` consistently instead of stale `2.2.x` build arguments.
+- Updated Trivy workflow steps to `aquasecurity/trivy-action@0.35.0` and guarded SARIF uploads so missing scan output no longer fails the workflow.
+- Removed the obsolete `Dockerfile.aarch64` lint target from Hadolint because the active CI and publish path already builds ARM64 from the main multi-platform Dockerfile.
+- Stopped the maintenance workflow from creating duplicate automated security audit issues when an equivalent issue is already open.
+
 ## [2.3.0-1] - 2025-10-07
 
 ### Changed
