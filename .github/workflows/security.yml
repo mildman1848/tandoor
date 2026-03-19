@@ -51,9 +51,19 @@ jobs:
           severity: 'CRITICAL,HIGH,MEDIUM'
           exit-code: '0'
 
+      - name: Check if Trivy image SARIF exists
+        id: trivy-image-sarif-check
+        if: always()
+        run: |
+          if [ -f trivy-results.sarif ] && [ -s trivy-results.sarif ]; then
+            echo "sarif_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sarif_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: ${{ always() && hashFiles('trivy-results.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        if: steps.trivy-image-sarif-check.outputs.sarif_exists == 'true'
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-container'
@@ -76,9 +86,19 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '0'
 
+      - name: Check if Trivy filesystem SARIF exists
+        id: trivy-fs-sarif-check
+        if: always()
+        run: |
+          if [ -f trivy-fs-results.sarif ] && [ -s trivy-fs-results.sarif ]; then
+            echo "sarif_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sarif_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload filesystem scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: ${{ always() && hashFiles('trivy-fs-results.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        if: steps.trivy-fs-sarif-check.outputs.sarif_exists == 'true'
         with:
           sarif_file: 'trivy-fs-results.sarif'
           category: 'trivy-filesystem'
@@ -99,8 +119,6 @@ jobs:
       - name: Run TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
         with:
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
           path: ./
           extra_args: --debug --only-verified
         continue-on-error: true
@@ -135,7 +153,7 @@ jobs:
           fi
 
       - name: Upload Snyk results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: steps.snyk-sarif-check.outputs.sarif_exists == 'true'
         with:
           sarif_file: snyk-results.sarif
