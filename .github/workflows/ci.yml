@@ -85,8 +85,8 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test-${{ github.sha }}
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=2.3.0
-            PROJECT_VERSION=2.3.0
+            TANDOOR_VERSION=2.3.6
+            PROJECT_VERSION=2.3.6
 
   integration-test:
     name: Integration Tests
@@ -110,8 +110,8 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=test
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=2.3.0
-            PROJECT_VERSION=2.3.0
+            TANDOOR_VERSION=2.3.6
+            PROJECT_VERSION=2.3.6
 
       - name: Create test environment
         run: |

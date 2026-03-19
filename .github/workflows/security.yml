@@ -39,7 +39,7 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=security-scan
             VCS_REF=${{ github.sha }}
-            TANDOOR_VERSION=2.3.0
+            TANDOOR_VERSION=2.3.6
             PROJECT_VERSION=scan
 
       - name: Run Trivy vulnerability scanner (SARIF)

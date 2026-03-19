@@ -10,3 +10,4 @@ Alle wichtigen Änderungen am Tandoor-Container werden in dieser Datei dokumenti
 - Trivy-Workflows auf `aquasecurity/trivy-action@0.35.0` aktualisiert und SARIF-Uploads gegen fehlende Scan-Ausgaben abgesichert.
 - Das veraltete Hadolint-Ziel für `Dockerfile.aarch64` entfernt, da der aktive CI- und Publish-Pfad ARM64 bereits über das zentrale Multi-Platform-Dockerfile baut.
 - Den Maintenance-Workflow so angepasst, dass keine doppelten automatischen Security-Audit-Issues mehr entstehen, wenn bereits ein passendes Issue offen ist.
+- Tandoor Recipes im Build, in den Workflows und in der Dokumentation von `2.3.0` auf `2.3.6` angehoben, um die aktuellen Upstream-Fixes mitzunehmen.

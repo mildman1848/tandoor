@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the obsolete `Dockerfile.aarch64` lint target from Hadolint because the active CI and publish path already builds ARM64 from the main multi-platform Dockerfile.
 - Stopped the maintenance workflow from creating duplicate automated security audit issues when an equivalent issue is already open.
 
+### Changed
+
+- Updated Tandoor Recipes from `2.3.0` to `2.3.6` across the image build, workflows, and documentation to pick up the current upstream fixes.
+
 ## [2.3.0-1] - 2025-10-07
 
 ### Changed

@@ -7,7 +7,7 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/mildman1848/tandoor)
 ![Docker Image Size](https://img.shields.io/docker/image-size/mildman1848/tandoor/latest)
 ![License](https://img.shields.io/github/license/mildman1848/tandoor)
-![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Version](https://img.shields.io/badge/version-2.3.6-blue)
 
 🐳 **[Docker Hub: mildman1848/tandoor](https://hub.docker.com/r/mildman1848/tandoor)**
 
