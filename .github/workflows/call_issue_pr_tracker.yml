@@ -8,6 +8,7 @@ on:
 
 jobs:
   issue-pr-tracker:
+    if: ${{ !contains(github.actor, 'dependabot') }}
     uses: linuxserver/github-workflows/.github/workflows/issue-pr-tracker.yml@main
     permissions:
       contents: read
