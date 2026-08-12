@@ -199,7 +199,7 @@ jobs:
               echo "Current base image version: $current_baseimage"
 
               # Get latest releases from LinuxServer.io baseimage repository
-              latest_releases=$(curl -s "https://api.github.com/repos/${BASEIMAGE_REPO}/releases?per_page=5")
+              latest_releases=$(curl -s "https://api.github.com/repos/${ process.env.BASEIMAGE_REPO }/releases?per_page=5")
               latest_tag=$(echo "$latest_releases" | jq -r '.[0].tag_name // "unknown"')
 
               echo "Latest base image tag: $latest_tag"
@@ -265,7 +265,7 @@ jobs:
               ### Version Information
               - **Current Version:** ${{ steps.baseimage-check.outputs.current_baseimage }}
               - **Latest Version:** ${{ steps.baseimage-check.outputs.latest_baseimage }}
-              - **Repository:** [${BASEIMAGE_REPO}](https://github.com/${BASEIMAGE_REPO})
+              - **Repository:** [${ process.env.BASEIMAGE_REPO }](https://github.com/${ process.env.BASEIMAGE_REPO })
 
               ### Update Process
               - [ ] Review base image changelog for breaking changes
@@ -291,7 +291,7 @@ jobs:
               - Performance optimizations
 
               ---
-              **Base Image Repository:** [${BASEIMAGE_REPO}](https://github.com/${BASEIMAGE_REPO})
+              **Base Image Repository:** [${ process.env.BASEIMAGE_REPO }](https://github.com/${ process.env.BASEIMAGE_REPO })
               **Update Priority:** Medium (unless security-related)
               **Next Check:** Monday/Thursday at 6 AM UTC
               `;
